@@ -1,7 +1,7 @@
 ;****************** main.s ***************
-; Program written by: ***Your Names**update this***
+; Program written by: Isaac Feldman and Mina Gawargious
 ; Date Created: 2/4/2017
-; Last Modified: 1/15/2018
+; Last Modified: 2/9/2018
 ; Brief description of the program
 ;   The LED toggles at 8 Hz and a varying duty-cycle
 ; Hardware connections (External: One button and one LED)
@@ -43,6 +43,15 @@ GPIO_PORTF_CR_R    EQU 0x40025524
 GPIO_LOCK_KEY      EQU 0x4C4F434B  ; Unlocks the GPIO_CR register
 SYSCTL_RCGCGPIO_R  EQU 0x400FE608
 
+LEDOnDelay EQU 499996
+TotalDelay EQU 2499980 ;I found these values through calculations of how many clock cycles instructions take to execute. The LED should initially
+;be on for 25 milliseconds for 20% duty cycle, and when I tested it on the logic analyzer, it came out to around 25.6 milliseconds, so the calculations were pretty close.
+	
+	;Note: I am using R2 as the multiple for the delay that the LED is on. It starts at 1, so the delay is 499996*1. When PE1 is pressed, it should change to 
+	;2, so the delay is now 2*499996 = 999992 (40% duty cycle), and so on. This way, when R2 is incremented, it will become R2 = (R2 + 1 )%6. If it changes to 5%6 = 5,
+	;the duty cycle will be 100%. Then it will change to 6%6 = 0, and the LED will be off.
+
+
      IMPORT  TExaS_Init
      THUMB
      AREA    DATA, ALIGN=2
@@ -56,9 +65,112 @@ Start
      BL  TExaS_Init ; voltmeter, scope on PD3
  ; Initialization goes here
  
+ ;So, I will use Port E Pins 0 and 1, and Port F pin 4. Since I am not using Port F pin 0, I need not unlock anything.
+ 
+	;Start clocks for ports E and F
+	LDR R0, = SYSCTL_RCGCGPIO_R
+	LDRB R1, [R0]
+	ORR R1, R1, #0x30 ;SYSCTL_RCGCGPIO_R = xxFEDCBA, so to enable E and F, I need to ORR it with 0x30.
+	STRB R1, [R0]
+	NOP
+	NOP
+	NOP
+	NOP
+	
+	;If I need to unlock port F, put it here, but since I am using switch 1 and not switch 2 (which is pin 0), I do not think an unlock is necessary.
+	
+	;Now, I need to digitally enable all the pins I am using.
+	
+	LDR R0, =GPIO_PORTE_DEN_R 
+	LDRB R1, [R0]
+	ORR R1, R1, #0x03 ;Digitally enable pins 0 and 1.
+	STRB R1, [R0]
+	
+	LDR R0, =GPIO_PORTF_DEN_R
+	LDRB R1, [R0]
+	ORR R1, R1, #0x10 ;Digitally enable pin 4.
+	STRB R1, [R0]
+	
+	;Now that the pins I am using are digitally enabled, I also need to set the directions of each of the pins as either input or output.
+	
+	;PE1 and PF4 are both inputs (0), and PE0 is an output (1). Remember that for some reason, 0 is input and 1 is output.
+	
+	LDR R0, =GPIO_PORTE_DIR_R
+	LDRB R1, [R0]
+	ORR R1, R1, #0x01 ;PE0 is an output (1).
+	AND R1, R1, #0xFD ;PE1 is input (DIR = 76543210)
+	STRB R1, [R0]
+	
+	;Now Port F
+	
+	LDR R0, =GPIO_PORTF_DIR_R
+	LDRB R1, [R0]
+	AND R1, R1, #0xEF ;Set pin 4 to input (0)
+	STRB R1, [R0]
+	
+	;Now, I need to disable alternate funtions.
+	
+	LDR R0, =GPIO_PORTE_AFSEL_R ;R0 = address of Alternate Function SELect register.
+	LDRB R1, [R0]
+	AND R1, #0xFC ;Turn off alternate functions for pins 0 and 1 for portE.
+	STRB R1, [R0]
+	
+	;Now to disable Port F's alternate functions.
+	
+	LDR R0, =GPIO_PORTF_AFSEL_R
+	LDRB R1, [R0]
+	AND R1, #0xEF ;I am only using pin 4, so I need to disable alternate functions just for pin 4.
+	STRB R1, [R0]
+
+	;Now, I need to enable the pull-up resistor for the negative-logic switch in Port F
+	
+	LDR R0, =GPIO_PORTF_PUR_R
+	LDRB R1, [R0]
+	ORR R1, #0x10 ;I am using switch 1 on pin 4, so I need to enable its pull-up resistor.
+	STRB R1, [R0]
+	
+	MOV R2, #0 ;LED should start at 20% duty cycle.
+ 
      CPSIE  I    ; TExaS voltmeter, scope runs on interrupts
+	 
+	 
 loop  
 ; main engine goes here
+
+	;Initially turn the LED on.
+	
+turnLEDOn LDR R0, =GPIO_PORTE_DATA_R
+	LDRB R1, [R0]
+	ORR R1, R1, #0x01 ;LED output on.
+	STRB R1, [R0]
+	
+	LDR R0, =LEDOnDelay ;R2 is the delay for the LED to be on.
+	MUL R0, R0, R2
+subtractOn	SUBS R0, R0, #1
+	BGT subtractOn ;If R0 is not 0, branch to subtractOn.
+	
+	;Otherwise, turn LED off.
+	
+turnLEDOff LDR R0, =GPIO_PORTE_DATA_R
+	LDRB R1, [R0]
+	AND R1, R1, #0xFE ;Turn LED Off.
+	STRB R1, [R0]
+	
+	LDR R0, =TotalDelay
+	LDR R1, =LEDOnDelay
+	MUL R1, R1, R2
+	SUB R0, R0, R1 ;The total delay - delay for LED to be on = dealy for LED to be off.
+subtractOff	SUBS R0, R0, #1
+	BGT subtractOff ;If R0 is not 0, branch to subtract.
+	
+	;The 20% duty cycle corresponds to a delay of 499996 (subtracting 1 from this value a bunch of times until it is 0 makes the LED on for 20% of the duty cycle).
+	;When PE1 is pressed AND released, I want R2 = (R2 + 1)%6, so it goes from 20% to 40 to 60 to 80 to 100 to 0.
+
+	;For an 8Hz LED cycle with a 80MHz microcontroller clock, I need 10MHz between setting thee LED on the first time and setting it on the second time.
+	
+	;With a 20% duty cycle, I wait 2 million cycles while it's on, then at the end of those 2 million cycles, the rest of the 8 million, it is off.
+	
+	
 
      B    loop
 
