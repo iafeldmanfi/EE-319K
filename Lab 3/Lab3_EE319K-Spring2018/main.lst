@@ -154,7 +154,7 @@ ARM Macro Assembler    Page 3
                        hing.
    69 00000004         
    70 00000004         ;Start clocks for ports E and F
-   71 00000004 4824            LDR              R0, = SYSCTL_RCGCGPIO_R
+   71 00000004 4837            LDR              R0, = SYSCTL_RCGCGPIO_R
    72 00000006 7801            LDRB             R1, [R0]
    73 00000008 F041 0130       ORR              R1, R1, #0x30 ;SYSCTL_RCGCGPIO_
                                                             R = xxFEDCBA, so to
@@ -174,13 +174,13 @@ ARM Macro Assembler    Page 3
    82 00000016         ;Now, I need to digitally enable all the pins I am using
                        .
    83 00000016         
-   84 00000016 4821            LDR              R0, =GPIO_PORTE_DEN_R
+   84 00000016 4834            LDR              R0, =GPIO_PORTE_DEN_R
    85 00000018 7801            LDRB             R1, [R0]
    86 0000001A F041 0103       ORR              R1, R1, #0x03 ;Digitally enable
                                                              pins 0 and 1.
    87 0000001E 7001            STRB             R1, [R0]
    88 00000020         
-   89 00000020 481F            LDR              R0, =GPIO_PORTF_DEN_R
+   89 00000020 4832            LDR              R0, =GPIO_PORTF_DEN_R
    90 00000022 7801            LDRB             R1, [R0]
    91 00000024 F041 0110       ORR              R1, R1, #0x10 ;Digitally enable
                                                              pin 4.
@@ -200,7 +200,7 @@ ARM Macro Assembler    Page 4
 
 
    97 0000002A         
-   98 0000002A 481E            LDR              R0, =GPIO_PORTE_DIR_R
+   98 0000002A 4831            LDR              R0, =GPIO_PORTE_DIR_R
    99 0000002C 7801            LDRB             R1, [R0]
   100 0000002E F041 0101       ORR              R1, R1, #0x01 ;PE0 is an output
                                                              (1).
@@ -210,7 +210,7 @@ ARM Macro Assembler    Page 4
   103 00000038         
   104 00000038         ;Now Port F
   105 00000038         
-  106 00000038 481B            LDR              R0, =GPIO_PORTF_DIR_R
+  106 00000038 482E            LDR              R0, =GPIO_PORTF_DIR_R
   107 0000003A 7801            LDRB             R1, [R0]
   108 0000003C F001 01EF       AND              R1, R1, #0xEF ;Set pin 4 to inp
                                                             ut (0)
@@ -218,7 +218,7 @@ ARM Macro Assembler    Page 4
   110 00000042         
   111 00000042         ;Now, I need to disable alternate funtions.
   112 00000042         
-  113 00000042 481A            LDR              R0, =GPIO_PORTE_AFSEL_R ;R0 = a
+  113 00000042 482D            LDR              R0, =GPIO_PORTE_AFSEL_R ;R0 = a
                                                             ddress of Alternate
                                                              Function SELect re
                                                             gister.
@@ -231,7 +231,7 @@ ARM Macro Assembler    Page 4
   117 0000004C         
   118 0000004C         ;Now to disable Port F's alternate functions.
   119 0000004C         
-  120 0000004C 4818            LDR              R0, =GPIO_PORTF_AFSEL_R
+  120 0000004C 482B            LDR              R0, =GPIO_PORTF_AFSEL_R
   121 0000004E 7801            LDRB             R1, [R0]
   122 00000050 F001 01EF       AND              R1, #0xEF   ;I am only using pi
                                                             n 4, so I need to d
@@ -243,7 +243,7 @@ ARM Macro Assembler    Page 4
   125 00000056         ;Now, I need to enable the pull-up resistor for the nega
                        tive-logic switch in Port F
   126 00000056         
-  127 00000056 4817            LDR              R0, =GPIO_PORTF_PUR_R
+  127 00000056 482A            LDR              R0, =GPIO_PORTF_PUR_R
   128 00000058 7801            LDRB             R1, [R0]
   129 0000005A F041 0110       ORR              R1, #0x10   ;I am using switch 
                                                             1 on pin 4, so I ne
@@ -251,89 +251,247 @@ ARM Macro Assembler    Page 4
                                                             ll-up resistor.
   130 0000005E 7001            STRB             R1, [R0]
   131 00000060         
-  132 00000060 F04F 0200       MOV              R2, #0      ;LED should start a
+  132 00000060 F04F 0201       MOV              R2, #1      ;LED should start a
                                                             t 20% duty cycle.
-  133 00000064         
-  134 00000064 B662            CPSIE            I           ; TExaS voltmeter, 
+  133 00000064 F04F 0300       MOV              R3, #0      ;The button is not 
+                                                            initially pressed.
+  134 00000068         
+  135 00000068 B662            CPSIE            I           ; TExaS voltmeter, 
                                                             scope runs on inter
-                                                            rupts
-  135 00000066         
 
 
 
 ARM Macro Assembler    Page 5 
 
 
-  136 00000066         
-  137 00000066         loop
-  138 00000066         ; main engine goes here
-  139 00000066         
-  140 00000066         ;Initially turn the LED on.
-  141 00000066         
-  142 00000066 4814    turnLEDOn
-                               LDR              R0, =GPIO_PORTE_DATA_R
-  143 00000068 7801            LDRB             R1, [R0]
-  144 0000006A F041 0101       ORR              R1, R1, #0x01 ;LED output on.
-  145 0000006E 7001            STRB             R1, [R0]
-  146 00000070         
-  147 00000070 4812            LDR              R0, =LEDOnDelay ;R2 is the dela
-                                                            y for the LED to be
-                                                             on.
-  148 00000072 FB00 F002       MUL              R0, R0, R2
-  149 00000076 1E40    subtractOn
-                               SUBS             R0, R0, #1
-  150 00000078 DCFD            BGT              subtractOn  ;If R0 is not 0, br
-                                                            anch to subtractOn.
-                                                            
-  151 0000007A         
-  152 0000007A         ;Otherwise, turn LED off.
-  153 0000007A         
-  154 0000007A 480F    turnLEDOff
-                               LDR              R0, =GPIO_PORTE_DATA_R
-  155 0000007C 7801            LDRB             R1, [R0]
-  156 0000007E F001 01FE       AND              R1, R1, #0xFE ;Turn LED Off.
-  157 00000082 7001            STRB             R1, [R0]
-  158 00000084         
-  159 00000084 480E            LDR              R0, =TotalDelay
-  160 00000086 490D            LDR              R1, =LEDOnDelay
-  161 00000088 FB01 F102       MUL              R1, R1, R2
-  162 0000008C EBA0 0001       SUB              R0, R0, R1  ;The total delay - 
-                                                            delay for LED to be
-                                                             on = dealy for LED
-                                                             to be off.
-  163 00000090 1E40    subtractOff
-                               SUBS             R0, R0, #1
-  164 00000092 DCFD            BGT              subtractOff ;If R0 is not 0, br
-                                                            anch to subtract.
-  165 00000094         
-  166 00000094         ;The 20% duty cycle corresponds to a delay of 499996 (su
+                                                            rupts
+  136 0000006A         
+  137 0000006A         
+  138 0000006A         loop
+  139 0000006A         ; main engine goes here
+  140 0000006A         
+  141 0000006A         ;Initially turn the LED on.
+  142 0000006A         
+  143 0000006A F000 F803       BL               toggleLED
+  144 0000006E         
+  145 0000006E         ;The 20% duty cycle corresponds to a delay of 499996 (su
                        btracting 1 from this value a bunch of times until it is
                         0 makes the LED on for 20% of the duty cycle).
-  167 00000094         ;When PE1 is pressed AND released, I want R2 = (R2 + 1)%
+  146 0000006E         ;When PE1 is pressed AND released, I want R2 = (R2 + 1)%
                        6, so it goes from 20% to 40 to 60 to 80 to 100 to 0.
-  168 00000094         
-  169 00000094         ;For an 8Hz LED cycle with a 80MHz microcontroller clock
+  147 0000006E         
+  148 0000006E         ;For an 8Hz LED cycle with a 80MHz microcontroller clock
                        , I need 10MHz between setting thee LED on the first tim
                        e and setting it on the second time.
-  170 00000094         
-  171 00000094         ;With a 20% duty cycle, I wait 2 million cycles while it
+  149 0000006E         
+  150 0000006E         ;With a 20% duty cycle, I wait 2 million cycles while it
                        's on, then at the end of those 2 million cycles, the re
                        st of the 8 million, it is off.
-  172 00000094         
-  173 00000094         
-  174 00000094         
-  175 00000094 E7E7            B                loop
+  151 0000006E         
+  152 0000006E         ;This is where things get a bit tricky. R2 is incremente
+                       d when the switch is pressed AND released. So, what I'm 
+                       thinking is this:
+  153 0000006E         ;Have a register, R3, that holds either 0 or 1. When the
+                        switch is pressed, put 1 into R3. Then, if the register
+                        holds a value of 1, and the switch holds
+  154 0000006E         ;a value of 0, then I know it's previous state was 1, an
+                       d it's current state was 0, so the button has been relea
+                       sed. Increment R2, and reset R3 back to 0.
+  155 0000006E         
+  156 0000006E         ;Now, if R3 is NOT 0, the switch has just been pressed. 
+                       See if it has been released yet.
+  157 0000006E         
+  158 0000006E F000 F820       BL               checkSwitchState
+  159 00000072         
+  160 00000072 E7FA            B                loop
+  161 00000074         
+  162 00000074                 ALIGN                        ; make sure the end
+                                                             of this section is
+                                                             aligned
+  163 00000074         
+  164 00000074         toggleLED                            ;Subroutine to togg
+                                                            le the LED on or of
+                                                            f, according to the
+                                                             duty cycle. Instea
+                                                            d of putting this i
+                                                            nside the loop, I p
+                                                            ut it as its own se
+                                                            parate
+  165 00000074         ;subroutine so I can call it for the breathing LED part.
+                       
+  166 00000074         
+  167 00000074 B507            PUSH             {R0, R1, R2, LR}
+  168 00000076         
+  169 00000076 2A00            CMP              R2, #0
 
 
 
 ARM Macro Assembler    Page 6 
 
 
-  176 00000096         
-  177 00000096 00 00           ALIGN                        ; make sure the end
-                                                             of this section is
-                                                             aligned
-  178 00000098                 END                          ; end of file
+  170 00000078 D00B            BEQ              turnLEDOff  ;When R2 = 0, the L
+                                                            ED should NEVER tur
+                                                            n on.
+  171 0000007A         
+  172 0000007A         turnLEDOn
+  173 0000007A 4822            LDR              R0, =GPIO_PORTE_DATA_R
+  174 0000007C 7801            LDRB             R1, [R0]
+  175 0000007E F041 0101       ORR              R1, R1, #0x01 ;LED output on.
+  176 00000082 7001            STRB             R1, [R0]
+  177 00000084         
+  178 00000084 4820            LDR              R0, =LEDOnDelay ;R2 is the dela
+                                                            y for the LED to be
+                                                             on.
+  179 00000086 FB00 F002       MUL              R0, R0, R2
+  180 0000008A 1E40    subtractOn
+                               SUBS             R0, R0, #1
+  181 0000008C DCFD            BGT              subtractOn  ;If R0 is not 0, br
+                                                            anch to subtractOn.
+                                                            
+  182 0000008E         
+  183 0000008E         ;Otherwise, turn LED off.
+  184 0000008E         
+  185 0000008E 2A05            CMP              R2, #5
+  186 00000090 D00C            BEQ              return      ;When R2 = 5, the L
+                                                            ED should NEVER tur
+                                                            n off.
+  187 00000092         
+  188 00000092 481C    turnLEDOff
+                               LDR              R0, =GPIO_PORTE_DATA_R
+  189 00000094 7801            LDRB             R1, [R0]
+  190 00000096 F001 01FE       AND              R1, R1, #0xFE ;Turn LED Off.
+  191 0000009A 7001            STRB             R1, [R0]
+  192 0000009C         
+  193 0000009C 481B            LDR              R0, =TotalDelay
+  194 0000009E 491A            LDR              R1, =LEDOnDelay
+  195 000000A0 FB01 F102       MUL              R1, R1, R2
+  196 000000A4 EBA0 0001       SUB              R0, R0, R1  ;The total delay - 
+                                                            delay for LED to be
+                                                             on = dealy for LED
+                                                             to be off.
+  197 000000A8 1E40    subtractOff
+                               SUBS             R0, R0, #1
+  198 000000AA DCFD            BGT              subtractOff ;If R0 is not 0, br
+                                                            anch to subtract.
+  199 000000AC E8BD 4007 
+                       return  POP              {R0, R1, R2, LR}
+  200 000000B0 4770            BX               LR
+  201 000000B2         
+  202 000000B2         
+  203 000000B2         checkSwitchState                     ;Subroutine to chec
+                                                            k if the switch has
+                                                             been pressed and r
+                                                            eleased. If R3 = 0,
+                                                             check switch state
+                                                             to see if it is 1.
+                                                             If it is, the swit
+                                                            ch has been
+  204 000000B2         ;pressed, so change R3 to a 1. If R3 is a 1, check switc
+                       h state to see if it is a 0. If it is, the switch has be
+
+
+
+ARM Macro Assembler    Page 7 
+
+
+                       en released, so R2 = (R2 + 1)%6, and R3 = 0.
+  205 000000B2         
+  206 000000B2 B501            PUSH             {R0, LR}
+  207 000000B4 4813            LDR              R0, =GPIO_PORTE_DATA_R
+  208 000000B6 7800            LDRB             R0, [R0]    ;Now, R0 has the da
+                                                            ta of port E. I am 
+                                                            not storing back to
+                                                             the data register 
+                                                            here, so I can over
+                                                            ride R0.
+  209 000000B8 F000 0002       AND              R0, R0, #0x02 ;Preserve only th
+                                                            e switch's bit. If 
+                                                            this is 0, the swit
+                                                            ch is not pressed. 
+                                                            If it is 1, it is p
+                                                            ressed.
+  210 000000BC EA4F 0050       LSR              R0, #1
+  211 000000C0         
+  212 000000C0 2B00            CMP              R3, #0
+  213 000000C2 D00B            BEQ              ChangeR3
+  214 000000C4         
+  215 000000C4         ;Otherwise, R3 is a 1. If R0 = 0, that means the switch 
+                       has changes states from 1 (pressed) to 0 (released). Go 
+                       to the next duty cycle.
+  216 000000C4         
+  217 000000C4 2800            CMP              R0, #0      ;If R0 = 0 (and her
+                                                            e, the previous bra
+                                                            nch failed, so R3 =
+                                                             1), the button has
+                                                             been released.
+  218 000000C6 D000            BEQ              buttonReleased
+  219 000000C8 E008            B                ChangeR3
+  220 000000CA         
+  221 000000CA F102 0201 
+                       buttonReleased
+                               ADD              R2, R2, #1
+  222 000000CE 2A06            CMP              R2, #6
+  223 000000D0 D002            BEQ              setR2BackTo0 ;There is no modul
+                                                            os operator in ARM,
+                                                             so instead, if R2 
+                                                            + 1 = 6, and I want
+                                                             it to be (R2+1)%6,
+                                                             if it is 6, set it
+                                                             back to 0.
+  224 000000D2 F7FF FFCF       BL               toggleLED   ;Once the button wa
+                                                            s releassed, toggle
+                                                             the LED on. The to
+                                                            ggleLED subroutine 
+                                                            saves R0 onto the s
+                                                            tack, so when I do 
+                                                            MOV R3, R0 later on
+                                                            , it is okay.
+  225 000000D6 E001            B                ChangeR3
+  226 000000D8         
+  227 000000D8 F04F 0200 
+                       setR2BackTo0
+                               MOV              R2, #0
+  228 000000DC         
+  229 000000DC         ;If R3 is 0, the button has not yet been pressed, so all
+
+
+
+ARM Macro Assembler    Page 8 
+
+
+                        I am doing is checking to see if it has been pressed, t
+                       hen putting 1 into R3 if it has. That is why I did an 
+  230 000000DC         ;LSR R0, #1. Since the button is bit 1 in Port E's Data 
+                       Register, shifting it over 1 to the right means R0 is ei
+                       ther 1 or 0. So, all I do is R3 = R0 in this case.
+  231 000000DC         
+  232 000000DC 4603    ChangeR3
+                               MOV              R3, R0      ;Now, R3 = R0.
+  233 000000DE E8BD 4001       POP              {R0, LR}
+  234 000000E2 4770            BX               LR
+  235 000000E4         
+  236 000000E4         
+  237 000000E4         ;    R3    R0    (change made? 0 = no changes, 1 = duty 
+                       cycle changed).
+  238 000000E4         ;  0    0  0
+  239 000000E4         ;  0    1  0  Button was pressed, so change R3 = 1
+  240 000000E4         ;  1    0  1  (if the button gets released, change duty 
+                       cycle, then R3 = 0)
+  241 000000E4         ;  1    1  0
+  242 000000E4         
+  243 000000E4         ;In any case, R3 = R0 at the end. If the button was just
+                        pressed (R0 = 1), I want R3 = 1 so I can tell if the bu
+                       tton was released. If the button was released (R0 = 0),
+  244 000000E4         ;I want R3 = 0 so I don't change the duty cycle again fr
+                       om just 1 button press. In any case, I will do R3 = R0, 
+                       but it just so happens that if R3 = R0, this does
+  245 000000E4         ;not change the value of R3. So, ChangeR3 will be execut
+                       ed every time.
+  246 000000E4         
+  247 000000E4         
+  248 000000E4                 ALIGN
+  249 000000E4         
+  250 000000E4                 END                          ; end of file
               400FE608 
               4002451C 
               4002551C 
@@ -377,6 +535,16 @@ Symbol: .text
    Uses
       None
 Comment: .text unused
+ChangeR3 000000DC
+
+Symbol: ChangeR3
+   Definitions
+      At line 232 in file main.s
+   Uses
+      At line 213 in file main.s
+      At line 219 in file main.s
+      At line 225 in file main.s
+
 Start 00000000
 
 Symbol: Start
@@ -385,47 +553,94 @@ Symbol: Start
    Uses
       At line 62 in file main.s
 Comment: Start used once
-loop 00000066
+buttonReleased 000000CA
+
+Symbol: buttonReleased
+   Definitions
+      At line 221 in file main.s
+   Uses
+      At line 218 in file main.s
+Comment: buttonReleased used once
+checkSwitchState 000000B2
+
+Symbol: checkSwitchState
+   Definitions
+      At line 203 in file main.s
+   Uses
+      At line 158 in file main.s
+Comment: checkSwitchState used once
+loop 0000006A
 
 Symbol: loop
    Definitions
-      At line 137 in file main.s
+      At line 138 in file main.s
    Uses
-      At line 175 in file main.s
+      At line 160 in file main.s
 Comment: loop used once
-subtractOff 00000090
+return 000000AC
+
+Symbol: return
+   Definitions
+      At line 199 in file main.s
+   Uses
+      At line 186 in file main.s
+Comment: return used once
+setR2BackTo0 000000D8
+
+
+
+ARM Macro Assembler    Page 2 Alphabetic symbol ordering
+Relocatable symbols
+
+
+Symbol: setR2BackTo0
+   Definitions
+      At line 227 in file main.s
+   Uses
+      At line 223 in file main.s
+Comment: setR2BackTo0 used once
+subtractOff 000000A8
 
 Symbol: subtractOff
    Definitions
-      At line 163 in file main.s
+      At line 197 in file main.s
    Uses
-      At line 164 in file main.s
+      At line 198 in file main.s
 Comment: subtractOff used once
-subtractOn 00000076
+subtractOn 0000008A
 
 Symbol: subtractOn
    Definitions
-      At line 149 in file main.s
+      At line 180 in file main.s
    Uses
-      At line 150 in file main.s
+      At line 181 in file main.s
 Comment: subtractOn used once
-turnLEDOff 0000007A
+toggleLED 00000074
+
+Symbol: toggleLED
+   Definitions
+      At line 164 in file main.s
+   Uses
+      At line 143 in file main.s
+      At line 224 in file main.s
+
+turnLEDOff 00000092
 
 Symbol: turnLEDOff
    Definitions
-      At line 154 in file main.s
+      At line 188 in file main.s
    Uses
-      None
-Comment: turnLEDOff unused
-turnLEDOn 00000066
+      At line 170 in file main.s
+Comment: turnLEDOff used once
+turnLEDOn 0000007A
 
 Symbol: turnLEDOn
    Definitions
-      At line 142 in file main.s
+      At line 172 in file main.s
    Uses
       None
 Comment: turnLEDOn unused
-7 symbols
+13 symbols
 
 
 
@@ -454,8 +669,9 @@ Symbol: GPIO_PORTE_DATA_R
    Definitions
       At line 31 in file main.s
    Uses
-      At line 142 in file main.s
-      At line 154 in file main.s
+      At line 173 in file main.s
+      At line 188 in file main.s
+      At line 207 in file main.s
 
 GPIO_PORTE_DEN_R 4002451C
 
@@ -493,9 +709,9 @@ GPIO_PORTF_DATA_R 400253FC
 
 
 
-
 ARM Macro Assembler    Page 2 Alphabetic symbol ordering
 Absolute symbols
+
 
 Symbol: GPIO_PORTF_DATA_R
    Definitions
@@ -541,8 +757,8 @@ Symbol: LEDOnDelay
    Definitions
       At line 46 in file main.s
    Uses
-      At line 147 in file main.s
-      At line 160 in file main.s
+      At line 178 in file main.s
+      At line 194 in file main.s
 
 SYSCTL_RCGCGPIO_R 400FE608
 
@@ -555,16 +771,16 @@ Comment: SYSCTL_RCGCGPIO_R used once
 TotalDelay 0026258C
 
 Symbol: TotalDelay
-   Definitions
 
 
 
 ARM Macro Assembler    Page 3 Alphabetic symbol ordering
 Absolute symbols
 
+   Definitions
       At line 47 in file main.s
    Uses
-      At line 159 in file main.s
+      At line 193 in file main.s
 Comment: TotalDelay used once
 15 symbols
 
@@ -582,4 +798,4 @@ Symbol: TExaS_Init
       At line 65 in file main.s
 Comment: TExaS_Init used once
 1 symbol
-357 symbols in table
+363 symbols in table

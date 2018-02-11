@@ -129,7 +129,8 @@ Start
 	ORR R1, #0x10 ;I am using switch 1 on pin 4, so I need to enable its pull-up resistor.
 	STRB R1, [R0]
 	
-	MOV R2, #0 ;LED should start at 20% duty cycle.
+	MOV R2, #1 ;LED should start at 20% duty cycle.
+	MOV R3, #0 ;The button is not initially pressed.
  
      CPSIE  I    ; TExaS voltmeter, scope runs on interrupts
 	 
@@ -138,8 +139,38 @@ loop
 ; main engine goes here
 
 	;Initially turn the LED on.
+
+	BL toggleLED
 	
-turnLEDOn LDR R0, =GPIO_PORTE_DATA_R
+	;The 20% duty cycle corresponds to a delay of 499996 (subtracting 1 from this value a bunch of times until it is 0 makes the LED on for 20% of the duty cycle).
+	;When PE1 is pressed AND released, I want R2 = (R2 + 1)%6, so it goes from 20% to 40 to 60 to 80 to 100 to 0.
+
+	;For an 8Hz LED cycle with a 80MHz microcontroller clock, I need 10MHz between setting thee LED on the first time and setting it on the second time.
+	
+	;With a 20% duty cycle, I wait 2 million cycles while it's on, then at the end of those 2 million cycles, the rest of the 8 million, it is off.
+	
+	;This is where things get a bit tricky. R2 is incremented when the switch is pressed AND released. So, what I'm thinking is this:
+	;Have a register, R3, that holds either 0 or 1. When the switch is pressed, put 1 into R3. Then, if the register holds a value of 1, and the switch holds
+	;a value of 0, then I know it's previous state was 1, and it's current state was 0, so the button has been released. Increment R2, and reset R3 back to 0.
+
+	;Now, if R3 is NOT 0, the switch has just been pressed. See if it has been released yet.
+	
+	BL checkSwitchState
+
+     B    loop
+
+     ALIGN      ; make sure the end of this section is aligned
+		 
+toggleLED ;Subroutine to toggle the LED on or off, according to the duty cycle.	Instead of putting this inside the loop, I put it as its own separate
+;subroutine so I can call it for the breathing LED part.
+
+	PUSH {R0, R1, R2, LR}
+	
+	CMP R2, #0
+	BEQ turnLEDOff ;When R2 = 0, the LED should NEVER turn on.
+	
+turnLEDOn 
+	LDR R0, =GPIO_PORTE_DATA_R
 	LDRB R1, [R0]
 	ORR R1, R1, #0x01 ;LED output on.
 	STRB R1, [R0]
@@ -150,6 +181,9 @@ subtractOn	SUBS R0, R0, #1
 	BGT subtractOn ;If R0 is not 0, branch to subtractOn.
 	
 	;Otherwise, turn LED off.
+	
+	CMP R2, #5
+	BEQ return ;When R2 = 5, the LED should NEVER turn off.
 	
 turnLEDOff LDR R0, =GPIO_PORTE_DATA_R
 	LDRB R1, [R0]
@@ -162,18 +196,55 @@ turnLEDOff LDR R0, =GPIO_PORTE_DATA_R
 	SUB R0, R0, R1 ;The total delay - delay for LED to be on = dealy for LED to be off.
 subtractOff	SUBS R0, R0, #1
 	BGT subtractOff ;If R0 is not 0, branch to subtract.
-	
-	;The 20% duty cycle corresponds to a delay of 499996 (subtracting 1 from this value a bunch of times until it is 0 makes the LED on for 20% of the duty cycle).
-	;When PE1 is pressed AND released, I want R2 = (R2 + 1)%6, so it goes from 20% to 40 to 60 to 80 to 100 to 0.
+return	POP {R0, R1, R2, LR}
+	BX LR
 
-	;For an 8Hz LED cycle with a 80MHz microcontroller clock, I need 10MHz between setting thee LED on the first time and setting it on the second time.
 	
-	;With a 20% duty cycle, I wait 2 million cycles while it's on, then at the end of those 2 million cycles, the rest of the 8 million, it is off.
+checkSwitchState ;Subroutine to check if the switch has been pressed and released. If R3 = 0, check switch state to see if it is 1. If it is, the switch has been
+;pressed, so change R3 to a 1. If R3 is a 1, check switch state to see if it is a 0. If it is, the switch has been released, so R2 = (R2 + 1)%6, and R3 = 0.
+
+	PUSH {R0, LR}
+	LDR R0, =GPIO_PORTE_DATA_R
+	LDRB R0, [R0] ;Now, R0 has the data of port E. I am not storing back to the data register here, so I can override R0.
+	AND R0, R0, #0x02 ;Preserve only the switch's bit. If this is 0, the switch is not pressed. If it is 1, it is pressed.
+	LSR R0, #1
+
+	CMP R3, #0
+	BEQ ChangeR3
 	
+	;Otherwise, R3 is a 1. If R0 = 0, that means the switch has changes states from 1 (pressed) to 0 (released). Go to the next duty cycle.
+	
+	CMP R0, #0 ;If R0 = 0 (and here, the previous branch failed, so R3 = 1), the button has been released.
+	BEQ buttonReleased
+	B ChangeR3
+	
+buttonReleased	ADD R2, R2, #1
+	CMP R2, #6
+	BEQ setR2BackTo0 ;There is no modulos operator in ARM, so instead, if R2 + 1 = 6, and I want it to be (R2+1)%6, if it is 6, set it back to 0.
+	BL toggleLED ;Once the button was releassed, toggle the LED on. The toggleLED subroutine saves R0 onto the stack, so when I do MOV R3, R0 later on, it is okay.
+	B ChangeR3
+	
+setR2BackTo0 MOV R2, #0
+
+;If R3 is 0, the button has not yet been pressed, so all I am doing is checking to see if it has been pressed, then putting 1 into R3 if it has. That is why I did an 
+;LSR R0, #1. Since the button is bit 1 in Port E's Data Register, shifting it over 1 to the right means R0 is either 1 or 0. So, all I do is R3 = R0 in this case.
+
+ChangeR3 MOV R3, R0 ;Now, R3 = R0.
+	POP {R0, LR}
+	BX LR
+	
+	
+	;    R3    R0    (change made? 0 = no changes, 1 = duty cycle changed).
+	;	 0	   0		0
+	;	 0	   1		0  Button was pressed, so change R3 = 1
+	;	 1	   0		1  (if the button gets released, change duty cycle, then R3 = 0)
+	;	 1	   1		0
+	
+	;In any case, R3 = R0 at the end. If the button was just pressed (R0 = 1), I want R3 = 1 so I can tell if the button was released. If the button was released (R0 = 0),
+	;I want R3 = 0 so I don't change the duty cycle again from just 1 button press. In any case, I will do R3 = R0, but it just so happens that if R3 = R0, this does
+	;not change the value of R3. So, ChangeR3 will be executed every time.
 	
 
-     B    loop
-
-     ALIGN      ; make sure the end of this section is aligned
-     END        ; end of file
-
+	ALIGN
+		
+    END        ; end of file
