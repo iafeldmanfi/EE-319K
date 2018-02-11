@@ -43,13 +43,9 @@ GPIO_PORTF_CR_R    EQU 0x40025524
 GPIO_LOCK_KEY      EQU 0x4C4F434B  ; Unlocks the GPIO_CR register
 SYSCTL_RCGCGPIO_R  EQU 0x400FE608
 
-TotalDelay EQU 20000000 ;I found these values through calculations of how many clock cycles instructions take to execute. The LED should initially
-;be on for 25 milliseconds for 20% duty cycle, and when I tested it on the logic analyzer, it came out to around 25.6 milliseconds, so the calculations were pretty close.
+TotalDelay EQU 20000000
 	
-	;Note: I am using R2 as the multiple for the delay that the LED is on. It starts at 1, so the delay is 499996*1. When PE1 is pressed, it should change to 
-	;2, so the delay is now 2*499996 = 999992 (40% duty cycle), and so on. This way, when R2 is incremented, it will become R2 = (R2 + 1 )%6. If it changes to 5%6 = 5,
-	;the duty cycle will be 100%. Then it will change to 6%6 = 0, and the LED will be off.
-
+	;R2 = duty cycle in percentage from 0 to 100. R3 = frequency in Hertz.
 
      IMPORT  TExaS_Init
      THUMB
@@ -128,7 +124,7 @@ Start
 	ORR R1, #0x10 ;I am using switch 1 on pin 4, so I need to enable its pull-up resistor.
 	STRB R1, [R0]
 	
-	MOV R2, #20 ;LED should start at 20% duty cycle.
+	MOV R2, #50 ;LED should start at 20% duty cycle.
 	MOV R3, #8 ;Frequency is 8 at first Hz.
 	MOV R4, #0 ;The button is not initially pressed.
  

@@ -248,7 +248,7 @@ ARM Macro Assembler    Page 4
                                                             ll-up resistor.
   129 0000005E 7001            STRB             R1, [R0]
   130 00000060         
-  131 00000060 F04F 0214       MOV              R2, #20     ;LED should start a
+  131 00000060 F04F 0232       MOV              R2, #50     ;LED should start a
                                                             t 20% duty cycle.
   132 00000064 F04F 0308       MOV              R3, #8      ;Frequency is 8 at 
                                                             first Hz.
