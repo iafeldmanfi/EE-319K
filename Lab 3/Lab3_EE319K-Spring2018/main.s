@@ -196,7 +196,7 @@ turnLEDOff LDR R0, =GPIO_PORTE_DATA_R
 	AND R1, R1, #0xFE ;Turn LED Off.
 	STRB R1, [R0]
 	
-	LDR R0, =TotalDelay
+	LDR R0, =TotalDelay	
 	UDIV R0, R3 ;Divide total delay by the frequency.
 	;The time the LED is on is (100-R2)% of the time.
 	MOV R1, #100
@@ -214,9 +214,9 @@ returnFromToggle	POP {R0, R1, R2, LR}
 Delay ;Subroutine to take what is in R0 as the value I want to count down from.
 	PUSH {R0, LR}
 subtract	SUBS R0, R0, #1
-	BGT subtract
+	BGT subtract ;R0 is a signed number. If it is 0 and I subtract 1 to get 0xFFFFFFFF, I want it to be -1 and break out of the loop.
 	POP {R0, LR}
-	BX LR
+		BX LR
 
 ;________________________________________________________________________________________________________________________________________________________________________
 
@@ -239,8 +239,8 @@ checkSwitchState ;Subroutine to check if the switch has been pressed and release
 	B ChangeR4
 	
 buttonReleased	ADD R2, R2, #20
-	CMP R2, #120
-	BEQ setR2BackTo0 ;There is no modulos operator in ARM, so instead, if R2 + 1 = 6, and I want it to be (R2+1)%6, if it is 6, set it back to 0.
+	CMP R2, #101 ;R2 is an unsigned value (percentage can't be negative)
+	BHS setR2BackTo0 ;There is no modulos operator in ARM, so instead, if R2 + 1 > 100, set it back to 0 since there is no duty cycle greater than 100%.
 	BL toggleLED ;Once the button was releassed, toggle the LED on. The toggleLED subroutine saves R0 onto the stack, so when I do MOV R3, R0 later on, it is okay.
 	B ChangeR4 ;So, if R2 = 120, it was previously 100%, so go to 0% (off). Otherwise, toggle the LED and then set R4 back to 0.
 	

@@ -419,7 +419,13 @@ ARM Macro Assembler    Page 7
   215 000000D0 B501            PUSH             {R0, LR}
   216 000000D2 1E40    subtract
                                SUBS             R0, R0, #1
-  217 000000D4 DCFD            BGT              subtract
+  217 000000D4 DCFD            BGT              subtract    ;R0 is a signed num
+                                                            ber. If it is 0 and
+                                                             I subtract 1 to ge
+                                                            t 0xFFFFFFFF, I wan
+                                                            t it to be -1 and b
+                                                            reak out of the loo
+                                                            p.
   218 000000D6 E8BD 4001       POP              {R0, LR}
   219 000000DA 4770            BX               LR
   220 000000DC         
@@ -447,18 +453,18 @@ ARM Macro Assembler    Page 7
                                                             not storing back to
                                                              the data register 
                                                             here, so I can over
-                                                            ride R0.
-  229 000000E2 F000 0002       AND              R0, R0, #0x02 ;Preserve only th
-                                                            e switch's bit. If 
-                                                            this is 0, the swit
-                                                            ch is not pressed. 
-                                                            If it is 1, it is p
 
 
 
 ARM Macro Assembler    Page 8 
 
 
+                                                            ride R0.
+  229 000000E2 F000 0002       AND              R0, R0, #0x02 ;Preserve only th
+                                                            e switch's bit. If 
+                                                            this is 0, the swit
+                                                            ch is not pressed. 
+                                                            If it is 1, it is p
                                                             ressed.
   230 000000E6 EA4F 0050       LSR              R0, #1
   231 000000EA         
@@ -486,14 +492,16 @@ ARM Macro Assembler    Page 8
   241 000000F4 F102 0214 
                        buttonReleased
                                ADD              R2, R2, #20
-  242 000000F8 2A78            CMP              R2, #120
-  243 000000FA D002            BEQ              setR2BackTo0 ;There is no modul
+  242 000000F8 2A65            CMP              R2, #101    ;R2 is an unsigned 
+                                                            value (percentage c
+                                                            an't be negative)
+  243 000000FA D202            BHS              setR2BackTo0 ;There is no modul
                                                             os operator in ARM,
                                                              so instead, if R2 
-                                                            + 1 = 6, and I want
-                                                             it to be (R2+1)%6,
-                                                             if it is 6, set it
-                                                             back to 0.
+                                                            + 1 > 100, set it b
+                                                            ack to 0 since ther
+                                                            e is no duty cycle 
+                                                            greater than 100%.
   244 000000FC F7FF FFBC       BL               toggleLED   ;Once the button wa
                                                             s releassed, toggle
                                                              the LED on. The to
@@ -510,6 +518,12 @@ ARM Macro Assembler    Page 8
                                                              set R4 back to 0.
   246 00000102         
   247 00000102 F04F 0200 
+
+
+
+ARM Macro Assembler    Page 9 
+
+
                        setR2BackTo0
                                MOV              R2, #0
   248 00000106         
@@ -518,12 +532,6 @@ ARM Macro Assembler    Page 8
                        hen putting 1 into R3 if it has. That is why I did an 
   250 00000106         ;LSR R0, #1. Since the button is bit 1 in Port E's Data 
                        Register, shifting it over 1 to the right means R0 is ei
-
-
-
-ARM Macro Assembler    Page 9 
-
-
                        ther 1 or 0. So, all I do is R3 = R0 in this case.
   251 00000106         
   252 00000106 4604    ChangeR4
