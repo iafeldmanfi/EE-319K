@@ -191,7 +191,7 @@ turnLEDOff LDR R0, =GPIO_PORTE_DATA_R
 	UDIV R0, Frequency ;Divide total delay by the frequency.
 	;The time the LED is on is (100-R2)% of the time.
 	MOV R1, #100
-	SUB R1, R1, DutyCycle ;Off = 100 - on. R1 = 100 - on = off
+	SUB R1, DutyCycle ;Off = 100 - on. R1 = 100 - on = off
 	MUL R0, R0, R1
 	MOV R1, #100
 	UDIV R0, R1 ;Once I get the value off, it's percentage is what I need for the LED to be off. So, 80 corresponds to 0.8, or 80%.
@@ -263,7 +263,7 @@ ChangeState MOV R4, R0 ;Now, R4 = R0.
 
 Breathe
 	
-	PUSH {R1, R2, R3, LR}
+	PUSH {R2, R3, R4, LR}
 	
 	MOV DutyCycle, #0
 	MOV Frequency, #80 ;Change frequency to 80 Hz.
@@ -302,7 +302,7 @@ BreatheAtNewDutyCycle BL toggleLED
 
 	B ButtonCheck
 	
-doneBreathing	POP {R1, R2, R3, LR}
+doneBreathing	POP {R2, R3, R4, LR}
 	BX LR
 	
 	ALIGN
