@@ -5,406 +5,643 @@ ARM Macro Assembler    Page 1
 
 
     1 00000000         ;****************** main.s ***************
-    2 00000000         ; Program written by: Mina Gawargious and Isaac Feldman
-    3 00000000         ; TA: Austin Harris
-    4 00000000         ; Date Created: 2/4/2017
-    5 00000000         ; Last Modified: 2/12/2018
-    6 00000000         ; Brief description of the program
-    7 00000000         ;   The LED toggles at 8 Hz and a varying duty-cycle
-    8 00000000         ; Hardware connections (External: One button and one LED
+    2 00000000         ; Program written by: Isaac Feldman and Mina Gawargious
+    3 00000000         ; Date Created: 2/4/2017
+    4 00000000         ; Last Modified: 2/9/2018
+    5 00000000         ; Brief description of the program
+    6 00000000         ;   The LED toggles at 8 Hz and a varying duty-cycle
+    7 00000000         ; Hardware connections (External: One button and one LED
                        )
-    9 00000000         ;   PE1 is Button input  (1 means pressed, 0 means not p
-                       ressed)
-   10 00000000         ;   PE0 is LED output (1 activates external LED on proto
-                       board)
-   11 00000000         ;   PF4 is builtin button SW1 on Launchpad (Internal) 
-   12 00000000         ;    Negative Logic (0 means pressed, 1 means not presse
-                       d)
-   13 00000000         ; Overall functionality of this system is to operate lik
+    8 00000000         ;  PE1 is Button input  (1 means pressed, 0 means not pr
+                       essed)
+    9 00000000         ;  PE0 is LED output (1 activates external LED on protob
+                       oard)
+   10 00000000         ;  PF4 is builtin button SW1 on Launchpad (Internal) 
+   11 00000000         ;        Negative Logic (0 means pressed, 1 means not pr
+                       essed)
+   12 00000000         ; Overall functionality of this system is to operate lik
                        e this
-   14 00000000         ;   1) Make PE0 an output and make PE1 and PF4 inputs.
-   15 00000000         ;   2) The system starts with the the LED toggling at 8H
+   13 00000000         ;   1) Make PE0 an output and make PE1 and PF4 inputs.
+   14 00000000         ;   2) The system starts with the the LED toggling at 8H
                        z,
-   16 00000000         ;      which is 8 times per second with a duty-cycle of 
+   15 00000000         ;      which is 8 times per second with a duty-cycle of 
                        20%.
-   17 00000000         ;      Therefore, the LED is ON for (0.2*1/8)th of a sec
+   16 00000000         ;      Therefore, the LED is ON for (0.2*1/8)th of a sec
                        ond
-   18 00000000         ;      and OFF for (0.8*1/8)th of a second.
-   19 00000000         ;   3) When the button on (PE1) is pressed-and-released 
+   17 00000000         ;      and OFF for (0.8*1/8)th of a second.
+   18 00000000         ;   3) When the button on (PE1) is pressed-and-released 
                        increase
-   20 00000000         ;      the duty cycle by 20% (modulo 100%). Therefore fo
+   19 00000000         ;      the duty cycle by 20% (modulo 100%). Therefore fo
                        r each
-   21 00000000         ;      press-and-release the duty cycle changes from 20%
+   20 00000000         ;      press-and-release the duty cycle changes from 20%
                         to 40% to 60%
-   22 00000000         ;      to 80% to 100%(ON) to 0%(Off) to 20% to 40% so on
+   21 00000000         ;      to 80% to 100%(ON) to 0%(Off) to 20% to 40% so on
                        
-   23 00000000         ;   4) Implement a "breathing LED" when SW1 (PF4) on the
+   22 00000000         ;   4) Implement a "breathing LED" when SW1 (PF4) on the
                         Launchpad is pressed:
-   24 00000000         ;      a) Be creative and play around with what "breathi
+   23 00000000         ;      a) Be creative and play around with what "breathi
                        ng" means.
-   25 00000000         ;         An example of "breathing" is most computers po
+   24 00000000         ;         An example of "breathing" is most computers po
                        wer LED in sleep mode
-   26 00000000         ;         (e.g., https://www.youtube.com/watch?v=ZT6siXy
+   25 00000000         ;         (e.g., https://www.youtube.com/watch?v=ZT6siXy
                        IjvQ).
-   27 00000000         ;      b) When (PF4) is released while in breathing mode
+   26 00000000         ;      b) When (PF4) is released while in breathing mode
                        , resume blinking at 8Hz.
-   28 00000000         ;         The duty cycle can either match the most recen
+   27 00000000         ;         The duty cycle can either match the most recen
                        t duty-
-   29 00000000         ;         cycle or reset to 20%.
-   30 00000000         ;      TIP: debugging the breathing LED algorithm and fe
+   28 00000000         ;         cycle or reset to 20%.
+   29 00000000         ;      TIP: debugging the breathing LED algorithm and fe
                        el on the simulator is impossible.
-   31 00000000         
-   32 00000000         ; PortE device registers
-   33 00000000 400243FC 
+   30 00000000         ; PortE device registers
+   31 00000000 400243FC 
                        GPIO_PORTE_DATA_R
                                EQU              0x400243FC
-   34 00000000 40024400 
+   32 00000000 40024400 
                        GPIO_PORTE_DIR_R
                                EQU              0x40024400
-   35 00000000 40024420 
+   33 00000000 40024420 
                        GPIO_PORTE_AFSEL_R
+                               EQU              0x40024420
+   34 00000000 4002451C 
 
 
 
 ARM Macro Assembler    Page 2 
 
 
-                               EQU              0x40024420
-   36 00000000 4002451C 
                        GPIO_PORTE_DEN_R
                                EQU              0x4002451C
-   37 00000000         ; PortF device registers
-   38 00000000 400253FC 
+   35 00000000         ; PortF device registers
+   36 00000000 400253FC 
                        GPIO_PORTF_DATA_R
                                EQU              0x400253FC
-   39 00000000 40025400 
+   37 00000000 40025400 
                        GPIO_PORTF_DIR_R
                                EQU              0x40025400
-   40 00000000 40025420 
+   38 00000000 40025420 
                        GPIO_PORTF_AFSEL_R
                                EQU              0x40025420
-   41 00000000 40025510 
+   39 00000000 40025510 
                        GPIO_PORTF_PUR_R
                                EQU              0x40025510
-   42 00000000 4002551C 
+   40 00000000 4002551C 
                        GPIO_PORTF_DEN_R
                                EQU              0x4002551C
-   43 00000000 40025520 
+   41 00000000 40025520 
                        GPIO_PORTF_LOCK_R
                                EQU              0x40025520
-   44 00000000 40025524 
+   42 00000000 40025524 
                        GPIO_PORTF_CR_R
                                EQU              0x40025524
-   45 00000000 4C4F434B 
+   43 00000000 4C4F434B 
                        GPIO_LOCK_KEY
-                               EQU              0x4C4F434B  ; unlocks the GPIO_
+                               EQU              0x4C4F434B  ; Unlocks the GPIO_
                                                             CR register
-   46 00000000 400FE608 
+   44 00000000 400FE608 
                        SYSCTL_RCGCGPIO_R
                                EQU              0x400FE608
-   47 00000000         
-   48 00000000 01312D00 
+   45 00000000         
+   46 00000000 01312D00 
                        TotalDelay
-                               EQU              20000000    ; the number of del
-                                                            ay loops per second
-                                                             in simulation
-   49 00000000 00000050 
-                       breatheFrequency
-                               EQU              80          ; the frequency at 
-                                                            which to breathe
-   50 00000000 00000005 
-                       breatheIncrement
-                               EQU              5           ; the duty cycle pe
-                                                            rcentage change
-   51 00000000        0 
-                       Direction
-                               RN               0
-   52 00000000        2 
-                       DutyCycle
-                               RN               2
-   53 00000000        3 
-                       Frequency
-                               RN               3
+                               EQU              20000000
+   47 00000000         
+   48 00000000         ;R2 = duty cycle in percentage from 0 to 100. R3 = frequ
+                       ency in Hertz.
+   49 00000000         
+   50 00000000                 IMPORT           TExaS_Init
+   51 00000000                 THUMB
+   52 00000000                 AREA             DATA, ALIGN=2
+   53 00000000         ;global variables go here
    54 00000000         
-   55 00000000                 IMPORT           TExaS_Init
+   55 00000000                 AREA             |.text|, CODE, READONLY, ALIGN=
+2
    56 00000000                 THUMB
+   57 00000000                 EXPORT           Start
+   58 00000000         Start
+   59 00000000         ; TExaS_Init sets bus clock at 80 MHz
+   60 00000000 F7FF FFFE       BL               TExaS_Init  ; voltmeter, scope 
+                                                            on PD3
+   61 00000004         ; Initialization goes here
+   62 00000004         
+   63 00000004         ;So, I will use Port E Pins 0 and 1, and Port F pin 4. S
+                       ince I am not using Port F pin 0, I need not unlock anyt
+                       hing.
+   64 00000004         
+   65 00000004         ;Start clocks for ports E and F
 
 
 
 ARM Macro Assembler    Page 3 
 
 
-   57 00000000                 AREA             DATA, ALIGN=2
-   58 00000000         ;global variables go here
-   59 00000000         
-   60 00000000                 AREA             |.text|, CODE, READONLY, ALIGN=
-2
-   61 00000000                 THUMB
-   62 00000000                 EXPORT           Start
-   63 00000000         Start
-   64 00000000         ; TExaS_Init sets bus clock at 80 MHz
-   65 00000000 F7FF FFFE       BL               TExaS_Init  ; voltmeter, scope 
-                                                            on PD3
-   66 00000004         ; Initialization goes here
-   67 00000004 484E            LDR              R0, =SYSCTL_RCGCGPIO_R ; start 
-                                                            the clock for PE, P
-                                                            F
-   68 00000006 6801            LDR              R1, [R0]
-   69 00000008 F041 0130       ORR              R1, R1, #0x30
-   70 0000000C 6001            STR              R1, [R0]
-   71 0000000E BF00            NOP
-   72 00000010 BF00            NOP
-   73 00000012 484C            LDR              R0, =GPIO_PORTE_DEN_R ; digital
-                                                             enable for PE0, PE
-                                                            1
-   74 00000014 6801            LDR              R1, [R0]
-   75 00000016 F041 0103       ORR              R1, R1, #0x3
-   76 0000001A 6001            STR              R1, [R0]
-   77 0000001C 484A            LDR              R0, =GPIO_PORTF_DEN_R ; digital
-                                                             enable for PF4
-   78 0000001E 6801            LDR              R1, [R0]
-   79 00000020 F041 0110       ORR              R1, R1, #0x10
-   80 00000024 6001            STR              R1, [R0]
-   81 00000026 4849            LDR              R0, =GPIO_PORTE_DIR_R ; PE0 is 
-                                                            output, PE1 is inpu
-                                                            t
-   82 00000028 6801            LDR              R1, [R0]
-   83 0000002A F041 0103       ORR              R1, R1, #0x3
-   84 0000002E F081 0102       EOR              R1, R1, #0x2
-   85 00000032 6001            STR              R1, [R0]
-   86 00000034 4846            LDR              R0, =GPIO_PORTF_DIR_R 
-                                                            ; PF4 is input
-   87 00000036 6801            LDR              R1, [R0]
-   88 00000038 F001 01EF       AND              R1, R1, #0xEF
-   89 0000003C 6001            STR              R1, [R0]
-   90 0000003E 4845            LDR              R0, =GPIO_PORTF_PUR_R ; enable 
-                                                            the pull-up resisto
-                                                            r for PF4
-   91 00000040 6801            LDR              R1, [R0]
-   92 00000042 F041 0110       ORR              R1, R1, #0x10
-   93 00000046 6001            STR              R1, [R0]
-   94 00000048 F04F 0214       MOV              DutyCycle, #20 ; the duty cycle
-                                                             starts at 20 perce
-                                                            nt
-   95 0000004C F04F 0308       MOV              Frequency, #8 ; frequency start
-                                                            s at 8 Hz
-   96 00000050 B662            CPSIE            I           ; TExaS voltmeter, 
-                                                            scope runs on inter
-                                                            rupts  
-   97 00000052         
-   98 00000052         loop
+   66 00000004 4857            LDR              R0, =SYSCTL_RCGCGPIO_R
+   67 00000006 7801            LDRB             R1, [R0]
+   68 00000008 F041 0130       ORR              R1, R1, #0x30 ;SYSCTL_RCGCGPIO_
+                                                            R = xxFEDCBA, so to
+                                                             enable E and F, I 
+                                                            need to ORR it with
+                                                             0x30.
+   69 0000000C 7001            STRB             R1, [R0]
+   70 0000000E BF00            NOP
+   71 00000010 BF00            NOP
+   72 00000012 BF00            NOP
+   73 00000014 BF00            NOP
+   74 00000016         
+   75 00000016         ;If I need to unlock port F, put it here, but since I am
+                        using switch 1 and not switch 2 (which is pin 0), I do 
+                       not think an unlock is necessary.
+   76 00000016         
+   77 00000016         ;Now, I need to digitally enable all the pins I am using
+                       .
+   78 00000016         
+   79 00000016 4854            LDR              R0, =GPIO_PORTE_DEN_R
+   80 00000018 7801            LDRB             R1, [R0]
+   81 0000001A F041 0103       ORR              R1, R1, #0x03 ;Digitally enable
+                                                             pins 0 and 1.
+   82 0000001E 7001            STRB             R1, [R0]
+   83 00000020         
+   84 00000020 4852            LDR              R0, =GPIO_PORTF_DEN_R
+   85 00000022 7801            LDRB             R1, [R0]
+   86 00000024 F041 0110       ORR              R1, R1, #0x10 ;Digitally enable
+                                                             pin 4.
+   87 00000028 7001            STRB             R1, [R0]
+   88 0000002A         
+   89 0000002A         ;Now that the pins I am using are digitally enabled, I a
+                       lso need to set the directions of each of the pins as ei
+                       ther input or output.
+   90 0000002A         
+   91 0000002A         ;PE1 and PF4 are both inputs (0), and PE0 is an output (
+                       1). Remember that for some reason, 0 is input and 1 is o
+                       utput.
+   92 0000002A         
+   93 0000002A 4851            LDR              R0, =GPIO_PORTE_DIR_R
+   94 0000002C 7801            LDRB             R1, [R0]
+   95 0000002E F041 0101       ORR              R1, R1, #0x01 ;PE0 is an output
+                                                             (1).
+   96 00000032 F001 01FD       AND              R1, R1, #0xFD ;PE1 is input (DI
+                                                            R = 76543210)
+   97 00000036 7001            STRB             R1, [R0]
+   98 00000038         
+   99 00000038         ;Now Port F
+  100 00000038         
+  101 00000038 484E            LDR              R0, =GPIO_PORTF_DIR_R
+  102 0000003A 7801            LDRB             R1, [R0]
+  103 0000003C F001 01EF       AND              R1, R1, #0xEF ;Set pin 4 to inp
+                                                            ut (0)
+  104 00000040 7001            STRB             R1, [R0]
+  105 00000042         
+  106 00000042         ;Now, I need to disable alternate funtions.
+  107 00000042         
+  108 00000042 484D            LDR              R0, =GPIO_PORTE_AFSEL_R ;R0 = a
 
 
 
 ARM Macro Assembler    Page 4 
 
 
-   99 00000052         ; main engine goes here
-  100 00000052 F000 F805       BL               toggleLED   ; turn the LED ON
-  101 00000056 F000 F835       BL               checkSwitchState
-  102 0000005A F000 F84C       BL               Breathe
-  103 0000005E E7F8            B                loop
-  104 00000060         
-  105 00000060         toggleLED                            ; toggles the LED
-  106 00000060 B507            PUSH             {R0, R1, R2, LR}
-  107 00000062 2A00            CMP              DutyCycle, #0
-  108 00000064 D011            BEQ              turnLEDOff
-  109 00000066         
-  110 00000066         turnLEDOn                            ; turns the LED ON
-  111 00000066 483C            LDR              R0, =GPIO_PORTE_DATA_R 
-                                                            ; set the LED high
-  112 00000068 6801            LDR              R1, [R0]
-  113 0000006A F041 0101       ORR              R1, R1, #0x1
-  114 0000006E 6001            STR              R1, [R0]
-  115 00000070 483A            LDR              R0, =TotalDelay ; find the appr
-                                                            opriate count for t
-                                                            he ON delay
-  116 00000072 FBB0 F0F3       UDIV             R0, Frequency
-  117 00000076 FB00 F002       MUL              R0, R0, DutyCycle
-  118 0000007A F04F 0164       MOV              R1, #100
-  119 0000007E FBB0 F0F1       UDIV             R0, R1
-  120 00000082 F000 F819       BL               delay
-  121 00000086 2A64            CMP              DutyCycle, #100 ; when the duty
-                                                             cycle is at 100 pe
-                                                            rcent, do not turn 
-                                                            the LED OFF
-  122 00000088 D013            BEQ              returnFromToggle
-  123 0000008A         
-  124 0000008A 4833    turnLEDOff
-                               LDR              R0, =GPIO_PORTE_DATA_R
-  125 0000008C 6801            LDR              R1, [R0]    ; set the LED low
-  126 0000008E F001 01FE       AND              R1, R1, #0xFE
-  127 00000092 6001            STR              R1, [R0]
-  128 00000094 4831            LDR              R0, =TotalDelay ; find the appr
-                                                            opriate count for t
-                                                            he OFF delay
-  129 00000096 FBB0 F0F3       UDIV             R0, Frequency
-  130 0000009A F04F 0164       MOV              R1, #100
-  131 0000009E EBA1 0102       SUB              R1, R1, DutyCycle
-  132 000000A2 FB00 F001       MUL              R0, R0, R1
-  133 000000A6 F04F 0164       MOV              R1, #100
-  134 000000AA FBB0 F0F1       UDIV             R0, R1
-  135 000000AE F000 F803       BL               delay
-  136 000000B2         
-  137 000000B2         returnFromToggle
-  138 000000B2 E8BD 4007       POP              {R0, R1, R2, LR}
-  139 000000B6 4770            BX               LR
-  140 000000B8         
-  141 000000B8         delay                                ; delay loop. Keeps
-                                                             the LED high or lo
-                                                            w for a prescribed 
-                                                            period
-  142 000000B8 B501            PUSH             {R0, LR}
-  143 000000BA         subtract
-  144 000000BA 1E40            SUBS             R0, R0, #1
-  145 000000BC DCFD            BGT              subtract
+                                                            ddress of Alternate
+                                                             Function SELect re
+                                                            gister.
+  109 00000044 7801            LDRB             R1, [R0]
+  110 00000046 F001 01FC       AND              R1, #0xFC   ;Turn off alternate
+                                                             functions for pins
+                                                             0 and 1 for portE.
+                                                            
+  111 0000004A 7001            STRB             R1, [R0]
+  112 0000004C         
+  113 0000004C         ;Now to disable Port F's alternate functions.
+  114 0000004C         
+  115 0000004C 484B            LDR              R0, =GPIO_PORTF_AFSEL_R
+  116 0000004E 7801            LDRB             R1, [R0]
+  117 00000050 F001 01EF       AND              R1, #0xEF   ;I am only using pi
+                                                            n 4, so I need to d
+                                                            isable alternate fu
+                                                            nctions just for pi
+                                                            n 4.
+  118 00000054 7001            STRB             R1, [R0]
+  119 00000056         
+  120 00000056         ;Now, I need to enable the pull-up resistor for the nega
+                       tive-logic switch in Port F
+  121 00000056         
+  122 00000056 484A            LDR              R0, =GPIO_PORTF_PUR_R
+  123 00000058 7801            LDRB             R1, [R0]
+  124 0000005A F041 0110       ORR              R1, #0x10   ;I am using switch 
+                                                            1 on pin 4, so I ne
+                                                            ed to enable its pu
+                                                            ll-up resistor.
+  125 0000005E 7001            STRB             R1, [R0]
+  126 00000060         
+  127 00000060 F04F 0214       MOV              R2, #20     ;LED should start a
+                                                            t 20% duty cycle.
+  128 00000064 F04F 0307       MOV              R3, #7      ;Frequency is 8 Her
+                                                            tz at first, an on 
+                                                            the real board, 100
+                                                            0 Hz is actually 11
+                                                            91 Hz, so the real 
+                                                            board is faster tha
+                                                            n the simulator. 8/
+                                                            1.191 = 6.717 (arou
+                                                            nd 7)
+  129 00000068 F04F 0400       MOV              R4, #0      ;The button is not 
+                                                            initially pressed.
+  130 0000006C         
+  131 0000006C        2 
+                       DutyCycle
+                               RN               2
+  132 0000006C        3 
+                       Frequency
+                               RN               3
+  133 0000006C         
+  134 0000006C B662            CPSIE            I           ; TExaS voltmeter, 
+                                                            scope runs on inter
+                                                            rupts
+  135 0000006E         
+  136 0000006E         ;What i want: R2 = duty cycle in percentage between 20 a
+                       nd 100. R3 = frequency in Hz. R4 = previous state of but
 
 
 
 ARM Macro Assembler    Page 5 
 
 
-  146 000000BE E8BD 4001       POP              {R0, LR}
-  147 000000C2 4770            BX               LR
-  148 000000C4         
-  149 000000C4         checkSwitchState                     ; checks if PE1 has
-                                                             been pressed and r
-                                                            eleased. If R4 = 0x
-                                                            0 and PE1 = 0x1, PE
-                                                            1 has been pressed.
-                                                             If R4 = 0x1 and PE
-                                                            1 = 0x0, PE1 has be
-                                                            en released.
-  150 000000C4 B501            PUSH             {R0, LR}
-  151 000000C6 4824            LDR              R0, =GPIO_PORTE_DATA_R ; get PE
-                                                            1 and put it in the
-                                                             least significant 
-                                                            bit
-  152 000000C8 6800            LDR              R0, [R0]
-  153 000000CA F000 0002       AND              R0, R0, #0x2
-  154 000000CE EA4F 0050       LSR              R0, #1
-  155 000000D2 2C00            CMP              R4, #0x0    ; if R4 = 0x0, move
-                                                             R0 to R4
-  156 000000D4 D00B            BEQ              ChangeState
-  157 000000D6 2800            CMP              R0, #0      ; R4 must be a 1. I
-                                                            f R0 = 0x0, PE1 has
-                                                             been released
-  158 000000D8 D000            BEQ              buttonReleased
-  159 000000DA E008            B                ChangeState
-  160 000000DC         
-  161 000000DC         buttonReleased
-  162 000000DC F102 0214       ADD              DutyCycle, DutyCycle, #20
-  163 000000E0 2A65            CMP              DutyCycle, #101 ; if DutyCycle 
-                                                            is greater than 100
-                                                            , set it to 0
-  164 000000E2 D202            BHS              SetDutyCycleTo0
-  165 000000E4 F7FF FFBC       BL               toggleLED   ; when PE0 is relea
-                                                            sed, toggle the LED
-                                                            
-  166 000000E8 E001            B                ChangeState
-  167 000000EA         
-  168 000000EA         SetDutyCycleTo0                      ; sets the duty cyc
-                                                            le to 0 percent
-  169 000000EA F04F 0200       MOV              DutyCycle, #0
-  170 000000EE         
-  171 000000EE         ChangeState                          ; changes the previ
-                                                            ous state of the sw
-                                                            itch
-  172 000000EE 4604            MOV              R4, R0
-  173 000000F0 E8BD 4001       POP              {R0, LR}
-  174 000000F4 4770            BX               LR
-  175 000000F6         
-  176 000000F6         Breathe
-  177 000000F6 B50E            PUSH             {R1, R2, R3, LR}
-  178 000000F8 F04F 0200       MOV              DutyCycle, #0 ; start breathing
-                                                             with a duty cycle 
-                                                            of 0 percent
-  179 000000FC F04F 0350       LDR              Frequency, =breatheFrequency ; 
-                                                            change the frequenc
-                                                            y to 80 Hz
-  180 00000100 F04F 0000       MOV              Direction, #0x0
+                       ton (PE1).
+  137 0000006E         
+  138 0000006E         loop
+  139 0000006E         ; main engine goes here
+  140 0000006E         
+  141 0000006E         ;Initially turn the LED on.
+  142 0000006E         
+  143 0000006E F000 F805       BL               toggleLED
+  144 00000072         
+  145 00000072 F000 F835       BL               checkSwitchState
+  146 00000076         
+  147 00000076 F000 F84D       BL               Breathe
+  148 0000007A         
+  149 0000007A E7F8            B                loop
+  150 0000007C         
+  151 0000007C                 ALIGN                        ; make sure the end
+                                                             of this section is
+                                                             aligned
+  152 0000007C         
+  153 0000007C         ;_______________________________________________________
+                       ________________________________________________________
+                       ________________________________________________________
+                       _
+  154 0000007C         
+  155 0000007C         toggleLED                            ;Subroutine to togg
+                                                            le the LED on or of
+                                                            f, according to the
+                                                             duty cycle. Instea
+                                                            d of putting this i
+                                                            nside the loop, I p
+                                                            ut it as its own se
+                                                            parate
+  156 0000007C         ;subroutine so I can call it for the breathing LED part.
+                       
+  157 0000007C         
+  158 0000007C B507            PUSH             {R0, R1, R2, LR}
+  159 0000007E         
+  160 0000007E 2A00            CMP              DutyCycle, #0
+  161 00000080 D011            BEQ              turnLEDOff  ;When R2 = 0, the L
+                                                            ED should NEVER tur
+                                                            n on.
+  162 00000082         
+  163 00000082         turnLEDOn
+  164 00000082         
+  165 00000082 4840            LDR              R0, =GPIO_PORTE_DATA_R
+  166 00000084 7801            LDRB             R1, [R0]
+  167 00000086 F041 0101       ORR              R1, R1, #0x01 ;LED output on.
+  168 0000008A 7001            STRB             R1, [R0]
+  169 0000008C         
+  170 0000008C         ;The number I should count down from is 20000000 (totalD
+                       elay) divided by the frequency for the total clock cycle
+                       s between turning the LED on once and turning it
+  171 0000008C         ;on another time. The tim it is on is then that value mu
+                       ltiplied by R2 divided by 100.
+  172 0000008C         
+  173 0000008C 483E            LDR              R0, =TotalDelay
+  174 0000008E FBB0 F0F3       UDIV             R0, Frequency ;Divide the total
+                                                             delay by the frequ
+                                                            ency.
 
 
 
 ARM Macro Assembler    Page 6 
 
 
-  181 00000104         
-  182 00000104         ButtonCheck
-  183 00000104 4916            LDR              R1, =GPIO_PORTF_DATA_R ; get PF
-                                                            4 and put it into R
-                                                            1
-  184 00000106 6809            LDR              R1, [R1]
-  185 00000108 F001 0110       AND              R1, R1, #0x10
-  186 0000010C 2900            CMP              R1, #0x0    ; if PF4 = 0x1, it 
-                                                            is no longer depres
-                                                            sed
-  187 0000010E D113            BNE              doneBreathing
-  188 00000110 2800            CMP              Direction, #0x0 ; PF4 is still 
-                                                            depressed, vary the
-                                                             duty cycle
-  189 00000112 D004            BEQ              ForwardDirection
-  190 00000114         
-  191 00000114         ReverseDirection                     ; decrement the dut
-                                                            y cycle by 5 percen
-                                                            t
-  192 00000114 F1A2 0205       SUB              DutyCycle, #breatheIncrement
-  193 00000118 2A00            CMP              DutyCycle, #0 ; if the duty cyc
-                                                            le is at 0 percent,
-                                                             set the direction 
-                                                            to forwards
-  194 0000011A D005            BEQ              SetDirectionToForwards
-  195 0000011C E009            B                BreatheAtNewDutyCycle
-  196 0000011E         
-  197 0000011E         ForwardDirection                     ; increment the dut
-                                                            y cycle by 5 percen
-                                                            t
-  198 0000011E F102 0205       ADD              DutyCycle, #breatheIncrement
-  199 00000122 2A64            CMP              DutyCycle, #100 ; if the duty c
-                                                            ycle is at 100 perc
-                                                            ent, set the direct
-                                                            ion to backwards
-  200 00000124 D003            BEQ              SetDirectionToBackwards
-  201 00000126 E004            B                BreatheAtNewDutyCycle
-  202 00000128         
-  203 00000128         SetDirectionToForwards               ; changes Direction
-                                                             to forwards 
-  204 00000128 F04F 0000       MOV              Direction, #0x0
-  205 0000012C E001            B                BreatheAtNewDutyCycle
-  206 0000012E         
-  207 0000012E         SetDirectionToBackwards              ; changes Direction
-                                                             to backwards
-  208 0000012E F04F 0001       MOV              Direction, #0x1
-  209 00000132         
-  210 00000132         BreatheAtNewDutyCycle                ; operate at a new 
-                                                            duty cycle
-  211 00000132 F7FF FF95       BL               toggleLED
-  212 00000136 E7E5            B                ButtonCheck
-  213 00000138         
-  214 00000138         doneBreathing                        ; stops the breathi
-                                                            ng subroutines
-  215 00000138 E8BD 400E       POP              {R1, R2, R3, LR}
-  216 0000013C 4770            BX               LR
-  217 0000013E         
-  218 0000013E 00 00           ALIGN                        ; make sure the end
-                                                             of this section is
+  175 00000092 FB00 F002       MUL              R0, R0, DutyCycle ;Time = (dela
+                                                            y/frequency)(dutycy
+                                                            cle/100) 
+  176 00000096 F04F 0164       MOV              R1, #100
+  177 0000009A FBB0 F0F1       UDIV             R0, R1      ;The total ON delay
+                                                             is the number of c
+                                                            lock cycles for tha
+                                                            t frequency multipl
+                                                            ied by the duty cyc
+                                                            le/100 (if R2 = 20,
+                                                             then it is 20/100 
+                                                            = 20% duty cycle).
+  178 0000009E F000 F819       BL               Delay
+  179 000000A2         
+  180 000000A2         ;Otherwise, turn LED off.
+  181 000000A2         
+  182 000000A2 2A64            CMP              DutyCycle, #100
+  183 000000A4 D013            BEQ              returnFromToggle ;When duty cyc
+                                                            le is 100%, LED sho
+                                                            uld NEVER turn off
+  184 000000A6         
+  185 000000A6 4837    turnLEDOff
+                               LDR              R0, =GPIO_PORTE_DATA_R
+  186 000000A8 7801            LDRB             R1, [R0]
+  187 000000AA F001 01FE       AND              R1, R1, #0xFE ;Turn LED Off.
+  188 000000AE 7001            STRB             R1, [R0]
+  189 000000B0         
+  190 000000B0 4835            LDR              R0, =TotalDelay
+  191 000000B2 FBB0 F0F3       UDIV             R0, Frequency ;Divide total del
+                                                            ay by the frequency
+                                                            .
+  192 000000B6         ;The time the LED is on is (100-R2)% of the time.
+  193 000000B6 F04F 0164       MOV              R1, #100
+  194 000000BA EBA1 0102       SUB              R1, DutyCycle ;Off = 100 - on. 
+                                                            R1 = 100 - on = off
+                                                            
+  195 000000BE FB00 F001       MUL              R0, R0, R1
+  196 000000C2 F04F 0164       MOV              R1, #100
+  197 000000C6 FBB0 F0F1       UDIV             R0, R1      ;Once I get the val
+                                                            ue off, it's percen
+                                                            tage is what I need
+                                                             for the LED to be 
+                                                            off. So, 80 corresp
+                                                            onds to 0.8, or 80%
+                                                            .
+  198 000000CA F000 F803       BL               Delay
+  199 000000CE         
+  200 000000CE E8BD 4007 
+                       returnFromToggle
+                               POP              {R0, R1, R2, LR}
+  201 000000D2 4770            BX               LR
+  202 000000D4         
+  203 000000D4         ;_______________________________________________________
+                       ________________________________________________________
+                       ________________________________________________________
+                       _
+  204 000000D4         
+  205 000000D4         Delay                                ;Subroutine to take
+                                                             what is in R0 as t
 
 
 
 ARM Macro Assembler    Page 7 
 
 
-                                                             aligned
-  219 00000140                 END                          ; end of file
+                                                            he value I want to 
+                                                            count down from.
+  206 000000D4 B501            PUSH             {R0, LR}
+  207 000000D6 1E40    subtract
+                               SUBS             R0, R0, #1
+  208 000000D8 DCFD            BGT              subtract    ;R0 is a signed num
+                                                            ber. If it is 0 and
+                                                             I subtract 1 to ge
+                                                            t 0xFFFFFFFF, I wan
+                                                            t it to be -1 and b
+                                                            reak out of the loo
+                                                            p.
+  209 000000DA E8BD 4001       POP              {R0, LR}
+  210 000000DE 4770            BX               LR
+  211 000000E0         
+  212 000000E0         ;_______________________________________________________
+                       ________________________________________________________
+                       ________________________________________________________
+                       _
+  213 000000E0         
+  214 000000E0         checkSwitchState                     ;Subroutine to chec
+                                                            k if the switch has
+                                                             been pressed and r
+                                                            eleased. If R4= 0, 
+                                                            check switch state 
+                                                            to see if it is 1. 
+                                                            If it is, the switc
+                                                            h has been
+  215 000000E0         ;pressed, so change R4 to a 1. If R3 is a 1, check switc
+                       h state to see if it is a 0. If it is, the switch has be
+                       en released, so R2 = (R2 + 1)%6, and R4 = 0.
+  216 000000E0         
+  217 000000E0 B501            PUSH             {R0, LR}
+  218 000000E2 4828            LDR              R0, =GPIO_PORTE_DATA_R
+  219 000000E4 7800            LDRB             R0, [R0]    ;Now, R0 has the da
+                                                            ta of port E. I am 
+                                                            not storing back to
+                                                             the data register 
+                                                            here, so I can over
+                                                            ride R0.
+  220 000000E6 F000 0002       AND              R0, R0, #0x02 ;Preserve only th
+                                                            e switch's bit. If 
+                                                            this is 0, the swit
+                                                            ch is not pressed. 
+                                                            If it is 1, it is p
+                                                            ressed.
+  221 000000EA EA4F 0050       LSR              R0, #1
+  222 000000EE         
+  223 000000EE 2C00            CMP              R4, #0
+  224 000000F0 D00B            BEQ              ChangeState ;If R4 = 0, I am no
+                                                            t changing the LED'
+                                                            s duty cycle since 
+                                                            the button has not 
+                                                            yet been pushed for
+                                                             it to be released.
+                                                            
+  225 000000F2         
+  226 000000F2         ;Otherwise, R4 is a 1. If R0 = 0, that means the switch 
+                       has changes states from 1 (pressed) to 0 (released). Go 
+
+
+
+ARM Macro Assembler    Page 8 
+
+
+                       to the next duty cycle.
+  227 000000F2         
+  228 000000F2 2800            CMP              R0, #0      ;If R0 = 0 (and her
+                                                            e, the previous bra
+                                                            nch failed, so R3 =
+                                                             1), the button has
+                                                             been released.
+  229 000000F4 D000            BEQ              buttonReleased
+  230 000000F6 E008            B                ChangeState
+  231 000000F8         
+  232 000000F8 F102 0214 
+                       buttonReleased
+                               ADD              DutyCycle, DutyCycle, #20
+  233 000000FC 2A65            CMP              DutyCycle, #101 ;R2 is an unsig
+                                                            ned value (percenta
+                                                            ge can't be negativ
+                                                            e)
+  234 000000FE D202            BHS              SetDutyCycleTo0 ;There is no mo
+                                                            dulos operator in A
+                                                            RM, so instead, if 
+                                                            R2 + 1 > 100, set i
+                                                            t back to 0 since t
+                                                            here is no duty cyc
+                                                            le greater than 100
+                                                            %.
+  235 00000100 F7FF FFBC       BL               toggleLED   ;Once the button wa
+                                                            s releassed, toggle
+                                                             the LED on. The to
+                                                            ggleLED subroutine 
+                                                            saves R0 onto the s
+                                                            tack, so when I do 
+                                                            MOV R3, R0 later on
+                                                            , it is okay.
+  236 00000104 E001            B                ChangeState ;So, if R2 = 120, i
+                                                            t was previously 10
+                                                            0%, so go to 0% (of
+                                                            f). Otherwise, togg
+                                                            le the LED and then
+                                                             set R4 back to 0.
+  237 00000106         
+  238 00000106 F04F 0200 
+                       SetDutyCycleTo0
+                               MOV              DutyCycle, #0
+  239 0000010A         
+  240 0000010A         ;If R3 is 0, the button has not yet been pressed, so all
+                        I am doing is checking to see if it has been pressed, t
+                       hen putting 1 into R3 if it has. That is why I did an 
+  241 0000010A         ;LSR R0, #1. Since the button is bit 1 in Port E's Data 
+                       Register, shifting it over 1 to the right means R0 is ei
+                       ther 1 or 0. So, all I do is R3 = R0 in this case.
+  242 0000010A         
+  243 0000010A 4604    ChangeState
+                               MOV              R4, R0      ;Now, R4 = R0.
+  244 0000010C E8BD 4001       POP              {R0, LR}
+  245 00000110 4770            BX               LR
+  246 00000112         
+  247 00000112         ;    R4   R0    (change made? 0 = no changes, 1 = duty c
+                       ycle changed).
+  248 00000112         ;  0    0  0
+
+
+
+ARM Macro Assembler    Page 9 
+
+
+  249 00000112         ;  0    1  0  Button was pressed, so change R4 = 1
+  250 00000112         ;  1    0  1  (if the button gets released, change duty 
+                       cycle, then R4 = 0)
+  251 00000112         ;  1    1  0
+  252 00000112         
+  253 00000112         ;In any case, R4 = R0 at the end. If the button was just
+                        pressed (R0 = 1), I want R4 = 1 so I can tell if the bu
+                       tton was released. If the button was released (R0 = 0),
+  254 00000112         ;I want R3 = 0 so I don't change the duty cycle again fr
+                       om just 1 button press. In any case, I will do R3 = R0, 
+                       but it just so happens that if R4 = R0, this does
+  255 00000112         ;not change the value of R4. So, ChangeR3 will be execut
+                       ed every time.
+  256 00000112         
+  257 00000112 00 00           ALIGN
+  258 00000114         
+  259 00000114         ;_______________________________________________________
+                       ________________________________________________________
+                       ________________________________________________________
+                       _
+  260 00000114         
+  261 00000114         ;For the breathing LED, I need to set the frequency to a
+                        higher value, such as 80 Hz, and dynamically change the
+                        duty cycle.
+  262 00000114         
+  263 00000114         
+  264 00000114         Breathe
+  265 00000114         
+  266 00000114 B51F            PUSH             {R0, R1, R2, R3, R4, LR}
+  267 00000116         
+  268 00000116 F04F 0200       MOV              DutyCycle, #0
+  269 0000011A F04F 0337       MOV              Frequency, #55 ;Change frequenc
+                                                            y to 80 Hz.
+  270 0000011E         
+  271 0000011E        1 
+                       Direction
+                               RN               1
+  272 0000011E         
+  273 0000011E F04F 0100       MOV              Direction, #0
+  274 00000122         
+  275 00000122 481A    ButtonCheck
+                               LDR              R0, =GPIO_PORTF_DATA_R
+  276 00000124 7800            LDRB             R0, [R0]
+  277 00000126 F000 0010       AND              R0, R0, #0x10 ;Preserve bit 4. 
+                                                            This is a negative 
+                                                            logic switch. 0 = c
+                                                            losed, 1 = open
+  278 0000012A 2800            CMP              R0, #0
+  279 0000012C D116            BNE              doneBreathing ;Value is a 1, me
+                                                            aning the button is
+                                                             not being pressed.
+                                                            
+  280 0000012E         
+  281 0000012E         ;Otherwise, the button is still being pressed, so change
+                        the duty cycle.
+  282 0000012E         
+  283 0000012E 2900            CMP              Direction, #0
+  284 00000130 D004            BEQ              ForwardDirection
+  285 00000132         
+
+
+
+ARM Macro Assembler    Page 10 
+
+
+  286 00000132 F1A2 0201 
+                       ReverseDirection
+                               SUB              DutyCycle, #1
+  287 00000136 2A00            CMP              DutyCycle, #0
+  288 00000138 D005            BEQ              SetDirectionToForwards ;Set the
+                                                             direction for the 
+                                                            NEXT time the LED t
+                                                            akes a breath.
+  289 0000013A E00C            B                BreatheAtNewDutyCycle
+  290 0000013C         
+  291 0000013C F102 0201 
+                       ForwardDirection
+                               ADD              DutyCycle, #1
+  292 00000140 2A64            CMP              DutyCycle, #100
+  293 00000142 D006            BEQ              SetDirectionToBackwards
+  294 00000144 E007            B                BreatheAtNewDutyCycle
+  295 00000146         
+  296 00000146 4812    SetDirectionToForwards
+                               LDR              R0, =5000000
+  297 00000148 F7FF FFC4       BL               Delay
+  298 0000014C F04F 0100       MOV              Direction, #0
+  299 00000150 E001            B                BreatheAtNewDutyCycle
+  300 00000152         
+  301 00000152 F04F 0101 
+                       SetDirectionToBackwards
+                               MOV              Direction, #1
+  302 00000156         
+  303 00000156 F7FF FF91 
+                       BreatheAtNewDutyCycle
+                               BL               toggleLED
+  304 0000015A         
+  305 0000015A E7E2            B                ButtonCheck
+  306 0000015C         
+  307 0000015C E8BD 401F 
+                       doneBreathing
+                               POP              {R0, R1, R2, R3, R4, LR}
+  308 00000160 4770            BX               LR
+  309 00000162         
+  310 00000162 00 00           ALIGN
+  311 00000164         
+  312 00000164                 END                          ; end of file
               400FE608 
               4002451C 
               4002551C 
               40024400 
               40025400 
+              40024420 
+              40025420 
               40025510 
               400243FC 
               01312D00 
               400253FC 
+              004C4B40 
 Command Line: --debug --xref --cpu=Cortex-M4 --apcs=interwork --depend=.\main.d
  -o.\main.o -IC:\Keil\ARM\RV31\INC -IC:\Keil\ARM\CMSIS\Include -IC:\Keil\ARM\In
 c\Luminary --predefine="__EVAL SETA 1" --list=.\main.lst main.s
@@ -418,7 +655,7 @@ DATA 00000000
 
 Symbol: DATA
    Definitions
-      At line 57 in file main.s
+      At line 52 in file main.s
    Uses
       None
 Comment: DATA unused
@@ -433,186 +670,187 @@ Relocatable symbols
 
 Symbol: .text
    Definitions
-      At line 60 in file main.s
+      At line 55 in file main.s
    Uses
       None
 Comment: .text unused
-Breathe 000000F6
+Breathe 00000114
 
 Symbol: Breathe
    Definitions
-      At line 176 in file main.s
+      At line 264 in file main.s
    Uses
-      At line 102 in file main.s
+      At line 147 in file main.s
 Comment: Breathe used once
-BreatheAtNewDutyCycle 00000132
+BreatheAtNewDutyCycle 00000156
 
 Symbol: BreatheAtNewDutyCycle
    Definitions
-      At line 210 in file main.s
+      At line 303 in file main.s
    Uses
-      At line 195 in file main.s
-      At line 201 in file main.s
-      At line 205 in file main.s
+      At line 289 in file main.s
+      At line 294 in file main.s
+      At line 299 in file main.s
 
-ButtonCheck 00000104
+ButtonCheck 00000122
 
 Symbol: ButtonCheck
    Definitions
-      At line 182 in file main.s
+      At line 275 in file main.s
    Uses
-      At line 212 in file main.s
+      At line 305 in file main.s
 Comment: ButtonCheck used once
-ChangeState 000000EE
+ChangeState 0000010A
 
 Symbol: ChangeState
    Definitions
-      At line 171 in file main.s
+      At line 243 in file main.s
    Uses
-      At line 156 in file main.s
-      At line 159 in file main.s
-      At line 166 in file main.s
+      At line 224 in file main.s
+      At line 230 in file main.s
+      At line 236 in file main.s
 
-ForwardDirection 0000011E
+Delay 000000D4
+
+Symbol: Delay
+   Definitions
+      At line 205 in file main.s
+   Uses
+      At line 178 in file main.s
+      At line 198 in file main.s
+      At line 297 in file main.s
+
+ForwardDirection 0000013C
 
 Symbol: ForwardDirection
    Definitions
-      At line 197 in file main.s
-   Uses
-      At line 189 in file main.s
-Comment: ForwardDirection used once
-ReverseDirection 00000114
-
-Symbol: ReverseDirection
-   Definitions
-      At line 191 in file main.s
-   Uses
-      None
+      At line 291 in file main.s
 
 
 
 ARM Macro Assembler    Page 2 Alphabetic symbol ordering
 Relocatable symbols
 
+   Uses
+      At line 284 in file main.s
+Comment: ForwardDirection used once
+ReverseDirection 00000132
+
+Symbol: ReverseDirection
+   Definitions
+      At line 286 in file main.s
+   Uses
+      None
 Comment: ReverseDirection unused
-SetDirectionToBackwards 0000012E
+SetDirectionToBackwards 00000152
 
 Symbol: SetDirectionToBackwards
    Definitions
-      At line 207 in file main.s
+      At line 301 in file main.s
    Uses
-      At line 200 in file main.s
+      At line 293 in file main.s
 Comment: SetDirectionToBackwards used once
-SetDirectionToForwards 00000128
+SetDirectionToForwards 00000146
 
 Symbol: SetDirectionToForwards
    Definitions
-      At line 203 in file main.s
+      At line 296 in file main.s
    Uses
-      At line 194 in file main.s
+      At line 288 in file main.s
 Comment: SetDirectionToForwards used once
-SetDutyCycleTo0 000000EA
+SetDutyCycleTo0 00000106
 
 Symbol: SetDutyCycleTo0
    Definitions
-      At line 168 in file main.s
+      At line 238 in file main.s
    Uses
-      At line 164 in file main.s
+      At line 234 in file main.s
 Comment: SetDutyCycleTo0 used once
 Start 00000000
 
 Symbol: Start
    Definitions
-      At line 63 in file main.s
+      At line 58 in file main.s
    Uses
-      At line 62 in file main.s
+      At line 57 in file main.s
 Comment: Start used once
-buttonReleased 000000DC
+buttonReleased 000000F8
 
 Symbol: buttonReleased
    Definitions
-      At line 161 in file main.s
+      At line 232 in file main.s
    Uses
-      At line 158 in file main.s
+      At line 229 in file main.s
 Comment: buttonReleased used once
-checkSwitchState 000000C4
+checkSwitchState 000000E0
 
 Symbol: checkSwitchState
    Definitions
-      At line 149 in file main.s
+      At line 214 in file main.s
    Uses
-      At line 101 in file main.s
+      At line 145 in file main.s
 Comment: checkSwitchState used once
-delay 000000B8
-
-Symbol: delay
-   Definitions
-      At line 141 in file main.s
-   Uses
-      At line 120 in file main.s
-      At line 135 in file main.s
-
-doneBreathing 00000138
 
 
 
 ARM Macro Assembler    Page 3 Alphabetic symbol ordering
 Relocatable symbols
 
+doneBreathing 0000015C
 
 Symbol: doneBreathing
    Definitions
-      At line 214 in file main.s
+      At line 307 in file main.s
    Uses
-      At line 187 in file main.s
+      At line 279 in file main.s
 Comment: doneBreathing used once
-loop 00000052
+loop 0000006E
 
 Symbol: loop
    Definitions
-      At line 98 in file main.s
+      At line 138 in file main.s
    Uses
-      At line 103 in file main.s
+      At line 149 in file main.s
 Comment: loop used once
-returnFromToggle 000000B2
+returnFromToggle 000000CE
 
 Symbol: returnFromToggle
    Definitions
-      At line 137 in file main.s
+      At line 200 in file main.s
    Uses
-      At line 122 in file main.s
+      At line 183 in file main.s
 Comment: returnFromToggle used once
-subtract 000000BA
+subtract 000000D6
 
 Symbol: subtract
    Definitions
-      At line 143 in file main.s
+      At line 207 in file main.s
    Uses
-      At line 145 in file main.s
+      At line 208 in file main.s
 Comment: subtract used once
-toggleLED 00000060
+toggleLED 0000007C
 
 Symbol: toggleLED
    Definitions
-      At line 105 in file main.s
+      At line 155 in file main.s
    Uses
-      At line 100 in file main.s
-      At line 165 in file main.s
-      At line 211 in file main.s
+      At line 143 in file main.s
+      At line 235 in file main.s
+      At line 303 in file main.s
 
-turnLEDOff 0000008A
+turnLEDOff 000000A6
 
 Symbol: turnLEDOff
    Definitions
-      At line 124 in file main.s
+      At line 185 in file main.s
    Uses
-      At line 108 in file main.s
+      At line 161 in file main.s
 Comment: turnLEDOff used once
-turnLEDOn 00000066
+turnLEDOn 00000082
 
 Symbol: turnLEDOn
    Definitions
-      At line 110 in file main.s
+      At line 163 in file main.s
    Uses
       None
 Comment: turnLEDOn unused
@@ -627,7 +865,7 @@ GPIO_LOCK_KEY 4C4F434B
 
 Symbol: GPIO_LOCK_KEY
    Definitions
-      At line 45 in file main.s
+      At line 43 in file main.s
    Uses
       None
 Comment: GPIO_LOCK_KEY unused
@@ -635,49 +873,49 @@ GPIO_PORTE_AFSEL_R 40024420
 
 Symbol: GPIO_PORTE_AFSEL_R
    Definitions
-      At line 35 in file main.s
+      At line 33 in file main.s
    Uses
-      None
-Comment: GPIO_PORTE_AFSEL_R unused
+      At line 108 in file main.s
+Comment: GPIO_PORTE_AFSEL_R used once
 GPIO_PORTE_DATA_R 400243FC
 
 Symbol: GPIO_PORTE_DATA_R
    Definitions
-      At line 33 in file main.s
+      At line 31 in file main.s
    Uses
-      At line 111 in file main.s
-      At line 124 in file main.s
-      At line 151 in file main.s
+      At line 165 in file main.s
+      At line 185 in file main.s
+      At line 218 in file main.s
 
 GPIO_PORTE_DEN_R 4002451C
 
 Symbol: GPIO_PORTE_DEN_R
    Definitions
-      At line 36 in file main.s
+      At line 34 in file main.s
    Uses
-      At line 73 in file main.s
+      At line 79 in file main.s
 Comment: GPIO_PORTE_DEN_R used once
 GPIO_PORTE_DIR_R 40024400
 
 Symbol: GPIO_PORTE_DIR_R
    Definitions
-      At line 34 in file main.s
+      At line 32 in file main.s
    Uses
-      At line 81 in file main.s
+      At line 93 in file main.s
 Comment: GPIO_PORTE_DIR_R used once
 GPIO_PORTF_AFSEL_R 40025420
 
 Symbol: GPIO_PORTF_AFSEL_R
    Definitions
-      At line 40 in file main.s
+      At line 38 in file main.s
    Uses
-      None
-Comment: GPIO_PORTF_AFSEL_R unused
+      At line 115 in file main.s
+Comment: GPIO_PORTF_AFSEL_R used once
 GPIO_PORTF_CR_R 40025524
 
 Symbol: GPIO_PORTF_CR_R
    Definitions
-      At line 44 in file main.s
+      At line 42 in file main.s
    Uses
       None
 Comment: GPIO_PORTF_CR_R unused
@@ -691,31 +929,31 @@ Absolute symbols
 
 Symbol: GPIO_PORTF_DATA_R
    Definitions
-      At line 38 in file main.s
+      At line 36 in file main.s
    Uses
-      At line 183 in file main.s
+      At line 275 in file main.s
 Comment: GPIO_PORTF_DATA_R used once
 GPIO_PORTF_DEN_R 4002551C
 
 Symbol: GPIO_PORTF_DEN_R
    Definitions
-      At line 42 in file main.s
+      At line 40 in file main.s
    Uses
-      At line 77 in file main.s
+      At line 84 in file main.s
 Comment: GPIO_PORTF_DEN_R used once
 GPIO_PORTF_DIR_R 40025400
 
 Symbol: GPIO_PORTF_DIR_R
    Definitions
-      At line 39 in file main.s
+      At line 37 in file main.s
    Uses
-      At line 86 in file main.s
+      At line 101 in file main.s
 Comment: GPIO_PORTF_DIR_R used once
 GPIO_PORTF_LOCK_R 40025520
 
 Symbol: GPIO_PORTF_LOCK_R
    Definitions
-      At line 43 in file main.s
+      At line 41 in file main.s
    Uses
       None
 Comment: GPIO_PORTF_LOCK_R unused
@@ -723,51 +961,28 @@ GPIO_PORTF_PUR_R 40025510
 
 Symbol: GPIO_PORTF_PUR_R
    Definitions
-      At line 41 in file main.s
+      At line 39 in file main.s
    Uses
-      At line 90 in file main.s
+      At line 122 in file main.s
 Comment: GPIO_PORTF_PUR_R used once
 SYSCTL_RCGCGPIO_R 400FE608
 
 Symbol: SYSCTL_RCGCGPIO_R
    Definitions
-      At line 46 in file main.s
+      At line 44 in file main.s
    Uses
-      At line 67 in file main.s
+      At line 66 in file main.s
 Comment: SYSCTL_RCGCGPIO_R used once
 TotalDelay 01312D00
 
 Symbol: TotalDelay
    Definitions
-      At line 48 in file main.s
+      At line 46 in file main.s
    Uses
-      At line 115 in file main.s
-      At line 128 in file main.s
+      At line 173 in file main.s
+      At line 190 in file main.s
 
-breatheFrequency 00000050
-
-Symbol: breatheFrequency
-
-
-
-ARM Macro Assembler    Page 3 Alphabetic symbol ordering
-Absolute symbols
-
-   Definitions
-      At line 49 in file main.s
-   Uses
-      At line 179 in file main.s
-Comment: breatheFrequency used once
-breatheIncrement 00000005
-
-Symbol: breatheIncrement
-   Definitions
-      At line 50 in file main.s
-   Uses
-      At line 192 in file main.s
-      At line 198 in file main.s
-
-16 symbols
+14 symbols
 
 
 
@@ -778,9 +993,9 @@ TExaS_Init 00000000
 
 Symbol: TExaS_Init
    Definitions
-      At line 55 in file main.s
+      At line 50 in file main.s
    Uses
-      At line 65 in file main.s
+      At line 60 in file main.s
 Comment: TExaS_Init used once
 1 symbol
-375 symbols in table
+373 symbols in table
