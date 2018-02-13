@@ -124,9 +124,12 @@ Start
 	ORR R1, #0x10 ;I am using switch 1 on pin 4, so I need to enable its pull-up resistor.
 	STRB R1, [R0]
 	
-	MOV R2, #50 ;LED should start at 20% duty cycle.
+	MOV R2, #20 ;LED should start at 20% duty cycle.
 	MOV R3, #8 ;Frequency is 8 at first Hz.
 	MOV R4, #0 ;The button is not initially pressed.
+ 
+DutyCycle RN 2
+Frequency RN 3
  
      CPSIE  I    ; TExaS voltmeter, scope runs on interrupts
 	 
@@ -139,18 +142,9 @@ loop
 
 	BL toggleLED
 	
-	;The 20% duty cycle corresponds to a delay of 499996 (subtracting 1 from this value a bunch of times until it is 0 makes the LED on for 20% of the duty cycle).
-	;When PE1 is pressed AND released, I want R2 = (R2 + 1)%6, so it goes from 20% to 40 to 60 to 80 to 100 to 0.
-
-	;For an 8Hz LED cycle with a 80MHz microcontroller clock, I need 10MHz between setting the LED on the first time and setting it on the second time.
-	
-	;With a 20% duty cycle, I wait 2 million cycles while it's on, then at the end of those 2 million cycles, the rest of the 8 million, it is off.
-	
-	;This is where things get a bit tricky. R2 is incremented when the switch is pressed AND released. So, what I'm thinking is this:
-	;Have a register, R4, that holds either 0 or 1. When the switch is pressed, put 1 into R4. Then, if the register holds a value of 1, and the switch holds
-	;a value of 0, then I know it's previous state was 1, and it's current state is 0, so the button has been released. Increment R2, and reset R4 back to 0.
-	
 	BL checkSwitchState
+
+	BL Breathe
 
     B    loop
 
@@ -163,10 +157,11 @@ toggleLED ;Subroutine to toggle the LED on or off, according to the duty cycle.	
 
 	PUSH {R0, R1, R2, LR}
 	
-	CMP R2, #0
+	CMP DutyCycle, #0
 	BEQ turnLEDOff ;When R2 = 0, the LED should NEVER turn on.
 	
 turnLEDOn 
+
 	LDR R0, =GPIO_PORTE_DATA_R
 	LDRB R1, [R0]
 	ORR R1, R1, #0x01 ;LED output on.
@@ -176,16 +171,16 @@ turnLEDOn
 	;on another time. The tim it is on is then that value multiplied by R2 divided by 100.
 	
 	LDR R0, =TotalDelay
-	UDIV R0, R3 ;Divide the total delay by the frequency.
-	MUL R0, R0, R2 
+	UDIV R0, Frequency ;Divide the total delay by the frequency.
+	MUL R0, R0, DutyCycle ;Time = (delay/frequency)(dutycycle/100) 
 	MOV R1, #100
 	UDIV R0, R1 ;The total ON delay is the number of clock cycles for that frequency multiplied by the duty cycle/100 (if R2 = 20, then it is 20/100 = 20% duty cycle).
 	BL Delay
 	
 	;Otherwise, turn LED off.
 	
-	CMP R2, #100
-	BEQ returnFromToggle ;When R2 = 5, the LED should NEVER turn off.
+	CMP DutyCycle, #100
+	BEQ returnFromToggle ;When duty cycle is 100%, LED should NEVER turn off
 	
 turnLEDOff LDR R0, =GPIO_PORTE_DATA_R
 	LDRB R1, [R0]
@@ -193,10 +188,10 @@ turnLEDOff LDR R0, =GPIO_PORTE_DATA_R
 	STRB R1, [R0]
 	
 	LDR R0, =TotalDelay	
-	UDIV R0, R3 ;Divide total delay by the frequency.
+	UDIV R0, Frequency ;Divide total delay by the frequency.
 	;The time the LED is on is (100-R2)% of the time.
 	MOV R1, #100
-	SUB R1, R1, R2 ;Off = 100 - on. R1 = 100 - on = off
+	SUB R1, R1, DutyCycle ;Off = 100 - on. R1 = 100 - on = off
 	MUL R0, R0, R1
 	MOV R1, #100
 	UDIV R0, R1 ;Once I get the value off, it's percentage is what I need for the LED to be off. So, 80 corresponds to 0.8, or 80%.
@@ -226,26 +221,26 @@ checkSwitchState ;Subroutine to check if the switch has been pressed and release
 	LSR R0, #1
 
 	CMP R4, #0
-	BEQ ChangeR4 ;If R4 = 0, I am not changing the LED's duty cycle since the button has not yet been pushed for it to be released.
+	BEQ ChangeState ;If R4 = 0, I am not changing the LED's duty cycle since the button has not yet been pushed for it to be released.
 	
 	;Otherwise, R4 is a 1. If R0 = 0, that means the switch has changes states from 1 (pressed) to 0 (released). Go to the next duty cycle.
 	
 	CMP R0, #0 ;If R0 = 0 (and here, the previous branch failed, so R3 = 1), the button has been released.
 	BEQ buttonReleased
-	B ChangeR4
+	B ChangeState
 	
-buttonReleased	ADD R2, R2, #20
-	CMP R2, #101 ;R2 is an unsigned value (percentage can't be negative)
-	BHS setR2BackTo0 ;There is no modulos operator in ARM, so instead, if R2 + 1 > 100, set it back to 0 since there is no duty cycle greater than 100%.
+buttonReleased	ADD DutyCycle, DutyCycle, #20
+	CMP DutyCycle, #101 ;R2 is an unsigned value (percentage can't be negative)
+	BHS SetDutyCycleTo0 ;There is no modulos operator in ARM, so instead, if R2 + 1 > 100, set it back to 0 since there is no duty cycle greater than 100%.
 	BL toggleLED ;Once the button was releassed, toggle the LED on. The toggleLED subroutine saves R0 onto the stack, so when I do MOV R3, R0 later on, it is okay.
-	B ChangeR4 ;So, if R2 = 120, it was previously 100%, so go to 0% (off). Otherwise, toggle the LED and then set R4 back to 0.
+	B ChangeState ;So, if R2 = 120, it was previously 100%, so go to 0% (off). Otherwise, toggle the LED and then set R4 back to 0.
 	
-setR2BackTo0 MOV R2, #0
+SetDutyCycleTo0 MOV DutyCycle, #0
 
 ;If R3 is 0, the button has not yet been pressed, so all I am doing is checking to see if it has been pressed, then putting 1 into R3 if it has. That is why I did an 
 ;LSR R0, #1. Since the button is bit 1 in Port E's Data Register, shifting it over 1 to the right means R0 is either 1 or 0. So, all I do is R3 = R0 in this case.
 
-ChangeR4 MOV R4, R0 ;Now, R4 = R0.
+ChangeState MOV R4, R0 ;Now, R4 = R0.
 	POP {R0, LR}
 	BX LR
 	
@@ -263,5 +258,53 @@ ChangeR4 MOV R4, R0 ;Now, R4 = R0.
 				
 ;________________________________________________________________________________________________________________________________________________________________________
 
+;For the breathing LED, I need to set the frequency to a higher value, such as 80 Hz, and dynamically change the duty cycle.
 
+
+Breathe
+	
+	PUSH {R1, R2, R3, LR}
+	
+	MOV DutyCycle, #0
+	MOV Frequency, #80 ;Change frequency to 80 Hz.
+	
+	MOV R0, #0
+	
+Direction RN 0
+
+ButtonCheck	LDR R1, =GPIO_PORTF_DATA_R
+	LDRB R1, [R1]
+	AND R1, R1, #0x10 ;Preserve bit 4. This is a negative logic switch. 0 = closed, 1 = open
+	CMP R1, #0	
+	BNE doneBreathing ;Value is a 1, meaning the button is not being pressed.
+	
+	;Otherwise, the button is still being pressed, so change the duty cycle.
+	
+	CMP Direction, #0
+	BEQ ForwardDirection
+	
+ReverseDirection SUB DutyCycle, #5
+	CMP DutyCycle, #0
+	BEQ SetDirectionToForwards ;Set the direction for the NEXT time the LED takes a breath.
+	B BreatheAtNewDutyCycle
+	
+ForwardDirection ADD DutyCycle, #5
+	CMP DutyCycle, #100
+	BEQ SetDirectionToBackwards
+	B BreatheAtNewDutyCycle
+	
+SetDirectionToForwards MOV Direction, #0
+	B BreatheAtNewDutyCycle
+	
+SetDirectionToBackwards MOV Direction, #1
+	
+BreatheAtNewDutyCycle BL toggleLED
+
+	B ButtonCheck
+	
+doneBreathing	POP {R1, R2, R3, LR}
+	BX LR
+	
+	ALIGN
+	
     END        ; end of file
