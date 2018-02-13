@@ -93,7 +93,7 @@ Start
 	STR R1, [R0]
 	MOV DutyCycle, #20 ; the duty cycle starts at 20 percent
 	MOV Frequency, #8 ; frequency starts at 8 Hz
-    CPSIE ; TExaS voltmeter, scope runs on interrupts	 
+    CPSIE I ; TExaS voltmeter, scope runs on interrupts	 
 
 loop  
 ; main engine goes here
@@ -201,6 +201,8 @@ ForwardDirection ; increment the duty cycle by 5 percent
 	B BreatheAtNewDutyCycle
 	
 SetDirectionToForwards ; changes Direction to forwards 
+	LDR R0, =5000000
+	BL DELAY
 	MOV Direction, #0x0
 	B BreatheAtNewDutyCycle
 	
