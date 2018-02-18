@@ -1,0 +1,963 @@
+
+
+
+ARM Macro Assembler    Page 1 
+
+
+    1 00000000         ;****************** main.s ***************
+    2 00000000         ; Program written by: Isaac Feldman and Mina Gawargious
+    3 00000000         ; Date Created: 2/14/2017
+    4 00000000         ; Last Modified: 2/15/2018
+    5 00000000         ; Brief description of the program
+    6 00000000         ;   The LED toggles at 8 Hz and a varying duty-cycle
+    7 00000000         ;   Repeat the functionality from Lab3 but now we want y
+                       ou to 
+    8 00000000         ;   insert debugging instruments which gather data (stat
+                       e and timing)
+    9 00000000         ;   to verify that the system is functioning as expected
+                       .
+   10 00000000         ; Hardware connections (External: One button and one LED
+                       )
+   11 00000000         ;  PE1 is Button input  (1 means pressed, 0 means not pr
+                       essed)
+   12 00000000         ;  PE0 is LED output (1 activates external LED on protob
+                       oard)
+   13 00000000         ;  PF2 is Blue LED on Launchpad used as a heartbeat
+   14 00000000         ; You will only verify the variable duty-cycle feature o
+                       f Lab 3 and not the "breathing" feature. 
+   15 00000000         ; Instrumentation data to be gathered is as follows:
+   16 00000000         ; After Button(PE1) press collect one state and time ent
+                       ry. 
+   17 00000000         ; After Buttin(PE1) release, collect 7 state and
+   18 00000000         ; time entries on each change in state of the LED(PE0): 
+                       
+   19 00000000         ; An entry is one 8-bit entry in the Data Buffer and one
+                        
+   20 00000000         ; 32-bit entry in the Time Buffer
+   21 00000000         ;  The Data Buffer entry (byte) content has:
+   22 00000000         ;    Lower nibble is state of LED (PE0)
+   23 00000000         ;    Higher nibble is state of Button (PE1)
+   24 00000000         ;  The Time Buffer entry (32-bit) has:
+   25 00000000         ;    24-bit value of the SysTick's Current register (NVI
+                       C_ST_CURRENT_R)
+   26 00000000         ; Note: The size of both buffers is 50 entries. Once you
+                        fill these
+   27 00000000         ;       entries you should stop collecting data
+   28 00000000         ; The heartbeat is an indicator of the running of the pr
+                       ogram. 
+   29 00000000         ; On each iteration of the main loop of your program tog
+                       gle the 
+   30 00000000         ; LED to indicate that your code(system) is live (not st
+                       uck or dead).
+   31 00000000         
+   32 00000000 400243FC 
+                       GPIO_PORTE_DATA_R
+                               EQU              0x400243FC
+   33 00000000 40024400 
+                       GPIO_PORTE_DIR_R
+                               EQU              0x40024400
+   34 00000000 40024420 
+                       GPIO_PORTE_AFSEL_R
+                               EQU              0x40024420
+   35 00000000 4002451C 
+                       GPIO_PORTE_DEN_R
+                               EQU              0x4002451C
+   36 00000000         
+
+
+
+ARM Macro Assembler    Page 2 
+
+
+   37 00000000 400253FC 
+                       GPIO_PORTF_DATA_R
+                               EQU              0x400253FC
+   38 00000000 40025400 
+                       GPIO_PORTF_DIR_R
+                               EQU              0x40025400
+   39 00000000 40025420 
+                       GPIO_PORTF_AFSEL_R
+                               EQU              0x40025420
+   40 00000000 40025510 
+                       GPIO_PORTF_PUR_R
+                               EQU              0x40025510
+   41 00000000 4002551C 
+                       GPIO_PORTF_DEN_R
+                               EQU              0x4002551C
+   42 00000000 40025520 
+                       GPIO_PORTF_LOCK_R
+                               EQU              0x40025520
+   43 00000000 40025524 
+                       GPIO_PORTF_CR_R
+                               EQU              0x40025524
+   44 00000000 4C4F434B 
+                       GPIO_LOCK_KEY
+                               EQU              0x4C4F434B
+   45 00000000 400FE608 
+                       SYSCTL_RCGCGPIO_R
+                               EQU              0x400FE608
+   46 00000000         
+   47 00000000         
+   48 00000000         ; RAM Area
+   49 00000000         
+   50 00000000                 AREA             DATA, ALIGN=2
+   51 00000000         ;-UUU-Declare  and allocate space for your Buffers 
+   52 00000000         ;and any variables (like pointers and counters) here
+   53 00000000         
+   54 00000000         ; ROM Area
+   55 00000000                 IMPORT           TExaS_Init
+   56 00000000         ;-UUU-Import routine(s) from other assembly files (like 
+                       SysTick.s) here
+   57 00000000                 AREA             |.text|, CODE, READONLY, ALIGN=
+2
+   58 00000000                 THUMB
+   59 00000000                 EXPORT           Start
+   60 00000000         
+   61 00000000         
+   62 00000000         Start
+   63 00000000         ; TExaS_Init sets bus clock at 80 MHz
+   64 00000000 F7FF FFFE       BL               TExaS_Init  ; voltmeter, scope 
+                                                            on PD3
+   65 00000004         ;place your initializations here
+   66 00000004         
+   67 00000004         ;PE1 is Button input, PE0 is LED output, PF2 is Blue LED
+                        on Launchpad used as a heartbeat
+   68 00000004         
+   69 00000004 485B            LDR              R0, =SYSCTL_RCGCGPIO_R
+   70 00000006 7801            LDRB             R1, [R0]
+   71 00000008 F041 0130       ORR              R1, #0x30   ;Enable ports E and
+                                                             F.
+   72 0000000C 7001            STRB             R1, [R0]
+
+
+
+ARM Macro Assembler    Page 3 
+
+
+   73 0000000E BF00            NOP
+   74 00000010 BF00            NOP
+   75 00000012 BF00            NOP
+   76 00000014 BF00            NOP
+   77 00000016         
+   78 00000016 4858            LDR              R0, = GPIO_PORTF_LOCK_R
+   79 00000018 4958            LDR              R1, = GPIO_LOCK_KEY
+   80 0000001A 6001            STR              R1, [R0]
+   81 0000001C         
+   82 0000001C 4858            LDR              R0, =GPIO_PORTF_CR_R
+   83 0000001E 7801            LDRB             R1, [R0]
+   84 00000020 F041 011F       ORR              R1, #0x1F
+   85 00000024 7001            STRB             R1, [R0]
+   86 00000026         
+   87 00000026 4857            LDR              R0, =GPIO_PORTE_DIR_R
+   88 00000028 7801            LDRB             R1, [R0]
+   89 0000002A F041 0101       ORR              R1, #0x01   ;PE0 is LED output,
+                                                             PE1 is button inpu
+                                                            t.
+   90 0000002E F001 01FD       AND              R1, #0xFD   ;1111 1101. PE1 is 
+                                                            input.
+   91 00000032 7001            STRB             R1, [R0]
+   92 00000034         
+   93 00000034 4854            LDR              R0, =GPIO_PORTF_DIR_R
+   94 00000036 7801            LDRB             R1, [R0]
+   95 00000038 F041 0104       ORR              R1, #0x04   ;PF2 is output.
+   96 0000003C 7001            STRB             R1, [R0]
+   97 0000003E         
+   98 0000003E 4853            LDR              R0, =GPIO_PORTE_DEN_R
+   99 00000040 7801            LDRB             R1, [R0]
+  100 00000042 F041 0103       ORR              R1, #0x03   ;Digitally enable p
+                                                            ins 0 and 1
+  101 00000046 7001            STRB             R1, [R0]
+  102 00000048         
+  103 00000048 4851            LDR              R0, =GPIO_PORTF_DEN_R
+  104 0000004A 7801            LDRB             R1, [R0]
+  105 0000004C F041 0104       ORR              R1, #0x04   ;Digitally enable p
+                                                            in 2.
+  106 00000050 7001            STRB             R1, [R0]
+  107 00000052         
+  108 00000052         ;AFSEL and PUR unnecessary (we are not using any negativ
+                       e logic to justify using PUR).
+  109 00000052         
+  110 00000052        2 
+                       Frequency
+                               RN               2
+  111 00000052        3 
+                       DutyCycle
+                               RN               3           ;From 0 to 100
+  112 00000052        4 
+                       PreviousButtonState
+                               RN               4
+  113 00000052        5 
+                       IncrementBy
+                               RN               5
+  114 00000052        6 
+                       OneHundred
+                               RN               6
+  115 00000052         
+
+
+
+ARM Macro Assembler    Page 4 
+
+
+  116 00000052 F04F 0208       MOV              Frequency, #8
+  117 00000056 F04F 0300       MOV              DutyCycle, #0 ;%
+  118 0000005A F04F 0400       MOV              PreviousButtonState, #0
+  119 0000005E F04F 0519       MOV              IncrementBy, #25 ;%
+  120 00000062 F04F 0664       MOV              OneHundred, #100
+  121 00000066         
+  122 00000066 B662            CPSIE            I           ; TExaS voltmeter, 
+                                                            scope runs on inter
+                                                            rupts
+  123 00000068         loop
+  124 00000068         
+  125 00000068 F000 F804       BL               toggleLED
+  126 0000006C         
+  127 0000006C F000 F86D       BL               CheckButtonState
+  128 00000070         
+  129 00000070 E7FA            B                loop
+  130 00000072         
+  131 00000072 00 00           ALIGN                        ; make sure the end
+                                                             of this section is
+                                                             aligned
+  132 00000074         
+  133 00000074         ;_______________________________________________________
+                       ________________________________________________________
+                       ________________________________________________________
+                       ________ 
+  134 00000074         toggleLED
+  135 00000074         ;Subroutine to turn the LED on and off based on the duty
+                        cycle.
+  136 00000074         
+  137 00000074 B507            PUSH             {R0, R1, R2, LR}
+  138 00000076         
+  139 00000076 4947            LDR              R1, =20000000
+  140 00000078 FBB1 F1F2       UDIV             R1, Frequency ;Now, we have the
+                                                             total number of cy
+                                                            cles for 1 entire o
+                                                            n-off loop.
+  141 0000007C         
+  142 0000007C 2B00            CMP              DutyCycle, #0
+  143 0000007E D01D            BEQ              LEDOff      ;If DutyCycle = 0, 
+                                                            LED is never on.
+  144 00000080         
+  145 00000080         ;Otherwise, we are here, and we turn the LED on.
+  146 00000080         
+  147 00000080 F04F 0011 
+                       LEDOn   MOV              R0, #0x11
+  148 00000084 F000 F845       BL               changeLEDState ;Turn LED off si
+                                                            nce R0 = 0x00.
+  149 00000088         
+  150 00000088         ;Count down for how long the LED should be on for.
+  151 00000088         
+  152 00000088 2B64            CMP              DutyCycle, #100
+  153 0000008A D004            BEQ              DutyCycleIs100 ;If not 100, LED
+                                                             and heartbeat foll
+                                                            ow each other.
+  154 0000008C         
+  155 0000008C         ;Otherwise, duty cycle is not 100.
+  156 0000008C         
+  157 0000008C FB01 F003       MUL              R0, R1, DutyCycle ;Multiply the
+                                                             number of cycles (
+
+
+
+ARM Macro Assembler    Page 5 
+
+
+                                                            R1) by the duty cyc
+                                                            le.
+  158 00000090 FBB0 F0F6       UDIV             R0, OneHundred ;Divide by 100 t
+                                                            o get the percentag
+                                                            e of the total cloc
+                                                            k cycles for 1 seco
+                                                            nd that the LED sho
+                                                            uld be on for. Now,
+                                                             R0 = clock cycles 
+                                                            to count down from 
+                                                            for LED to
+  159 00000094         ;be on.
+  160 00000094 E00E            B                ContinueOn
+  161 00000096         
+  162 00000096         ;If the duty cycle is 100%, I want to subtract the Incre
+                       mentBy value from 100 to get the previous state. I count
+                        down (delay) from that percentage 
+  163 00000096         ;with 0x11 for changeLEDState, then set it to 0x01 and c
+                       all changeLEDState again and continue the rest of the de
+                       lay.
+  164 00000096         
+  165 00000096         ;Otherwise, the DutyCycle is 100. So, do 100-IncrementBy
+                       . Multiply that by R0 and divide by 100
+  166 00000096         
+  167 00000096 1B70    DutyCycleIs100
+                               SUBS             R0, OneHundred, IncrementBy ;R0
+                                                             = 100 - IncrementB
+                                                            y. If the duty cycl
+                                                            e was 100% and we i
+                                                            ncrement by 20% eve
+                                                            ry time, I want to 
+                                                            keep it at 80%.
+  168 00000098 FB01 F000       MUL              R0, R1, R0
+  169 0000009C FBB0 F0F6       UDIV             R0, OneHundred ;Multiply R1 (20
+                                                             million delay for 
+                                                            1 second (100% duty
+                                                             cycle)) by the pre
+                                                            vious duty cycle th
+                                                            en divide by 100.
+  170 000000A0         
+  171 000000A0 F000 F831       BL               Delay       ;The delay is (100-
+                                                            IncrementBy)/100. S
+                                                            o, if we increment 
+                                                            the duty cycle by 3
+                                                            0%, we delay for 70
+                                                            % for the blue LED.
+                                                            
+  172 000000A4         
+  173 000000A4 F04F 0001       MOV              R0, #0x01
+  174 000000A8 F000 F833       BL               changeLEDState ;Now, turn the b
+                                                            lue LED off but kee
+                                                            p the breadboard LE
+                                                            D on.
+  175 000000AC         
+  176 000000AC         ;Now, delay by (100-(100-IncrementBy))/100 = IncrementBy
+                       /100.
+  177 000000AC         
+  178 000000AC FB01 F005       MUL              R0, R1, IncrementBy
+  179 000000B0 FBB0 F0F6       UDIV             R0, OneHundred
+
+
+
+ARM Macro Assembler    Page 6 
+
+
+  180 000000B4         
+  181 000000B4 F000 F827 
+                       ContinueOn
+                               BL               Delay       ;Delay for numberOf
+                                                            Cycles * DutyCycleP
+                                                            ercentage/100.
+  182 000000B8         
+  183 000000B8 2B64            CMP              DutyCycle, #100
+  184 000000BA D021            BEQ              Done        ;If the duty cycle 
+                                                            is 100, never turn 
+                                                            the LED off.
+  185 000000BC         
+  186 000000BC 2B00    LEDOff  CMP              DutyCycle, #0
+  187 000000BE D00A            BEQ              DutyCycleIs0
+  188 000000C0         
+  189 000000C0         ;Otherwise, the duty cycle is not 0, and the breadboard 
+                       LED and heartbeat should follow each other.
+  190 000000C0         
+  191 000000C0 F04F 0000       MOV              R0, #0x00
+  192 000000C4 F000 F825       BL               changeLEDState ;Turn LED off si
+                                                            nce R0 = 0x00.
+  193 000000C8 EBA6 0003       SUB              R0, OneHundred, DutyCycle ;The 
+                                                            off time is 100% - 
+                                                            DutyCycle (percenta
+                                                            ge on). R0 = percen
+                                                            t of cycles that th
+                                                            e LED is off. If Du
+                                                            ty Cycle = 40% (on)
+                                                            , 100-DutyCycle - 6
+                                                            0% (off).
+  194 000000CC FB00 F001       MUL              R0, R0, R1  ;Multiply the perce
+                                                            ntage off by the to
+                                                            tal number needed t
+                                                            o count down from t
+                                                            o have 1 second del
+                                                            ay. So, if off = 60
+                                                            %, it should be off
+                                                             for 60% of 1 secon
+                                                            d.
+  195 000000D0 FBB0 F0F6       UDIV             R0, OneHundred ;Now, R0 holds t
+                                                            he numberofCycles f
+                                                            or 1 entire-on-off 
+                                                            loop * percetage of
+                                                             that cycle the LED
+                                                             is off. Divide by 
+                                                            100 to get the actu
+                                                            al PERCENTAGE betwe
+                                                            en 0 and 1.
+  196 000000D4 E012            B                ContinueOff
+  197 000000D6         
+  198 000000D6 F04F 0010 
+                       DutyCycleIs0
+                               MOV              R0, #0x10   ;Turn blue on-board
+                                                             LED on.
+  199 000000DA F000 F81A       BL               changeLEDState ;Unlike when the
+                                                             duty cycle is 100,
+                                                             I need to actual c
+                                                            hange 0x00 to 0x10 
+                                                            before calling chan
+
+
+
+ARM Macro Assembler    Page 7 
+
+
+                                                            geLEDState.
+  200 000000DE 1B70            SUBS             R0, OneHundred, IncrementBy ;R0
+                                                             = 100-IncrementBy 
+                                                            = Previous Duty Cyc
+                                                            le before 100%.
+  201 000000E0 FB01 F000       MUL              R0, R1, R0  ;Multiply the total
+                                                             countdown for a 10
+                                                            0% duty cycle (20 m
+                                                            illion) by the duty
+                                                             cycle before 100%.
+                                                            
+  202 000000E4 FBB0 F0F6       UDIV             R0, OneHundred ;Get the percent
+                                                            age between 0 and 1
+                                                             (value/100).
+  203 000000E8         
+  204 000000E8 F000 F80D       BL               Delay
+  205 000000EC         
+  206 000000EC F04F 0000       MOV              R0, #0x00
+  207 000000F0 F000 F80F       BL               changeLEDState
+  208 000000F4         
+  209 000000F4 FB01 F005       MUL              R0, R1, IncrementBy
+  210 000000F8 FBB0 F0F6       UDIV             R0, OneHundred
+  211 000000FC         
+  212 000000FC F000 F803 
+                       ContinueOff
+                               BL               Delay
+  213 00000100         
+  214 00000100         Done
+  215 00000100 E8BD 4007       POP              {R0, R1, R2, LR}
+  216 00000104 4770            BX               LR
+  217 00000106         
+  218 00000106         ;_______________________________________________________
+                       ________________________________________________________
+                       ________________________________________________________
+                       ________    
+  219 00000106         Delay
+  220 00000106         ;Takes the number in R0 for the delay.
+  221 00000106 B507            PUSH             {R0, R1, R2, LR}
+  222 00000108         
+  223 00000108 3801    subtractAgain
+                               SUBS             R0, #1
+  224 0000010A DCFD            BGT              subtractAgain
+  225 0000010C         
+  226 0000010C E8BD 4007       POP              {R0, R1, R2, LR}
+  227 00000110 4770            BX               LR
+  228 00000112         
+  229 00000112         ;_______________________________________________________
+                       ________________________________________________________
+                       ________________________________________________________
+                       ________ 
+  230 00000112         changeLEDState                       ;Turns breadboard L
+                                                            ED on or off depend
+                                                            ing on value of R0'
+                                                            s least significant
+                                                             bit. R0 bit 0 = 0 
+                                                            = LED off. R0 bit 0
+                                                             = 1 = LED on. Turn
+                                                            s blue LED on
+  231 00000112         ;microcontroller on depending on R0 bit 4. R0 bit 4 = 0 
+
+
+
+ARM Macro Assembler    Page 8 
+
+
+                       = LED off. R0 bit 4 = 1 = LED on.
+  232 00000112 B51F            PUSH             {R0, R1, R2, R3, R4, LR}
+  233 00000114 4920            LDR              R1, =GPIO_PORTE_DATA_R
+  234 00000116 780A            LDRB             R2, [R1]
+  235 00000118         
+  236 00000118 F040 03FE       ORR              R3, R0, #0xFE ;Change all other
+                                                             bits in R0 to a 1.
+                                                             R3 = R0 ORR 0xFE.
+  237 0000011C EA02 0203       AND              R2, R3      ;AND the data with 
+                                                            R3. If R3 = 0xFE, t
+                                                            he led is off. If R
+                                                            3 = 0xFF, nothing c
+                                                            hanges.
+  238 00000120 F003 0301       AND              R3, #0x01   ;Preserve the least
+                                                             significant bit of
+                                                             R0.
+  239 00000124 EA42 0203       ORR              R2, R3      ;ORR the data with 
+                                                            R0. If R0 = 0x01, O
+                                                            RR turns bit 0 of t
+                                                            he data to a 1 (LED
+                                                             on). If R0 = 0x00,
+                                                             nothing changes.
+  240 00000128 700A            STRB             R2, [R1]
+  241 0000012A         
+  242 0000012A 491C            LDR              R1, =GPIO_PORTF_DATA_R
+  243 0000012C 780A            LDRB             R2, [R1]
+  244 0000012E         
+  245 0000012E EA4F 0390       LSR              R3, R0, #2  ;Shift value over 2
+                                                             bits to correspond
+                                                             to PF2. R3 = R0 >>
+                                                             2.
+  246 00000132 F043 03FB       ORR              R3, #0xFB   ;Change all other b
+                                                            its in R0 to a 1. F
+                                                            B = 1111 1011
+  247 00000136 EA02 0203       AND              R2, R3      ;AND the data with 
+                                                            R3. If R0 = 0xFE, t
+                                                            he led is off. If R
+                                                            0 = 0xFF, nothing c
+                                                            hanges.
+  248 0000013A F003 0304       AND              R3, #0x04   ;Preserve the least
+                                                             significant bit of
+                                                             R0.
+  249 0000013E EA42 0203       ORR              R2, R3      ;ORR the data with 
+                                                            R0. If R0 = 0x01, O
+                                                            RR turns bit 0 of t
+                                                            he data to a 1 (LED
+                                                             on). If R0 = 0x00,
+                                                             nothing changes.
+  250 00000142 700A            STRB             R2, [R1]
+  251 00000144         
+  252 00000144         ;LSL R0, #2
+  253 00000144         ;ORR R2, R0
+  254 00000144         ;ORR R0, #0xFB
+  255 00000144         ;AND R2, R0 ;Set PF4 LED
+  256 00000144         ;STRB R2, [R1]
+  257 00000144         
+  258 00000144 E8BD 401F 
+                       LEDStateChanged
+                               POP              {R0, R1, R2, R3, R4, LR}
+
+
+
+ARM Macro Assembler    Page 9 
+
+
+  259 00000148 4770            BX               LR
+  260 0000014A         
+  261 0000014A         ;(0 AND 0) ORR 0 = 0 ORR 0 = 0. (0 AND 1) ORR 1  = 0 ORR
+                        1 = 1. (1 AND 0) ORR 0 = 0 ORR 0 = 0. (1 AND 1) ORR 1 =
+                        1 ORR 0 = 1. 
+  262 0000014A         ;(0 ORR 0) AND 0 = 0 AND 0 = 0. (0 ORR 1) AND 1  = 1 AND
+                        1 = 1. (1 ORR 0) AND 0 = 1 AND 0 = 0. (1 ORR 1) AND 1 =
+                        1 AND 1 = 1.
+  263 0000014A         ;ORRing then ANDing or ANDing or ORRing a bit with anoth
+                       er bit either changes the bit to a 0 with the AND and do
+                       es not change it with the ORR, 
+  264 0000014A         ;or changes the bit to a 1 with the ORR and does not cha
+                       nge it with the AND.
+  265 0000014A         ;THAT is why I can ORR then AND a bit or ORR it then AND
+                        it to set it equal to another bit.
+  266 0000014A         
+  267 0000014A         ;_______________________________________________________
+                       ________________________________________________________
+                       ________________________________________________________
+                       ________
+  268 0000014A         CheckButtonState
+  269 0000014A         ;Subroutine that checks the state of the button input (P
+                       E1) to determine if it has been released or not. If it h
+                       as, it goes to the next duty cycle (20-40-60-80-100-0-20
+                       ...)
+  270 0000014A         
+  271 0000014A B507            PUSH             {R0, R1, R2, LR}
+  272 0000014C         
+  273 0000014C 4812            LDR              R0, =GPIO_PORTE_DATA_R
+  274 0000014E 7800            LDRB             R0,[R0]
+  275 00000150 F000 0002       AND              R0, #0x02   ;Preserve only bit 
+                                                            1 (the button statu
+                                                            s bit).
+  276 00000154 EA4F 0050       LSR              R0, #1      ;Logically shift it
+                                                             right 1 bit so it 
+                                                            is easier to compar
+                                                            e with PreviousButt
+                                                            onState
+  277 00000158         
+  278 00000158 42A0            CMP              R0, PreviousButtonState
+  279 0000015A D008            BEQ              StateChecked ;If the current bu
+                                                            tton state is the s
+                                                            ame as the previous
+                                                             button state, noth
+                                                            ing changed, so we 
+                                                            are done here.
+  280 0000015C         
+  281 0000015C         ;Otherwise, the state has changed.
+  282 0000015C         
+  283 0000015C 2C00            CMP              PreviousButtonState, #0
+  284 0000015E D005            BEQ              ChangeStateToCurrentState ;If t
+                                                            he previous button 
+                                                            state is 0, and the
+                                                             previous button st
+                                                            ate is not the same
+                                                             as the current sta
+                                                            te, the button was 
+                                                            just pressed,
+  285 00000160         ;not released. So, just update the value for PreviousBut
+
+
+
+ARM Macro Assembler    Page 10 
+
+
+                       tonState. The duty cycle only changes when the button is
+                        RELEASED.
+  286 00000160         
+  287 00000160         ;Otherwise, if we are here and previous branches failed,
+                        the previous button state and the current button state 
+                       are not the same, and the previous button state is not 0
+                       .
+  288 00000160         ;So, the previous button state is 1, and the current but
+                       ton state is a 0. Update the duty cycle.
+  289 00000160         
+  290 00000160 442B            ADD              DutyCycle, IncrementBy
+  291 00000162         
+  292 00000162 2B64            CMP              DutyCycle, #100
+  293 00000164 DC00            BGT              ChangeDutyCycleTo0
+  294 00000166 E001            B                ChangeStateToCurrentState
+  295 00000168         
+  296 00000168 F04F 0300 
+                       ChangeDutyCycleTo0
+                               MOV              DutyCycle, #0
+  297 0000016C         
+  298 0000016C 4604    ChangeStateToCurrentState
+                               MOV              PreviousButtonState, R0
+  299 0000016E E8BD 4007 
+                       StateChecked
+                               POP              {R0, R1, R2, LR}
+  300 00000172 4770            BX               LR
+  301 00000174         
+  302 00000174                 ALIGN
+  303 00000174         
+  304 00000174                 END                          ; end of file
+              400FE608 
+              40025520 
+              4C4F434B 
+              40025524 
+              40024400 
+              40025400 
+              4002451C 
+              4002551C 
+              01312D00 
+              400243FC 
+              400253FC 
+Command Line: --debug --xref --cpu=Cortex-M4 --apcs=interwork --depend=.\main.d
+ -o.\main.o -IC:\Keil\ARM\RV31\INC -IC:\Keil\ARM\CMSIS\Include -IC:\Keil\ARM\In
+c\Luminary --predefine="__EVAL SETA 1" --list=.\main.lst main.s
+
+
+
+ARM Macro Assembler    Page 1 Alphabetic symbol ordering
+Relocatable symbols
+
+DATA 00000000
+
+Symbol: DATA
+   Definitions
+      At line 50 in file main.s
+   Uses
+      None
+Comment: DATA unused
+1 symbol
+
+
+
+ARM Macro Assembler    Page 1 Alphabetic symbol ordering
+Relocatable symbols
+
+.text 00000000
+
+Symbol: .text
+   Definitions
+      At line 57 in file main.s
+   Uses
+      None
+Comment: .text unused
+ChangeDutyCycleTo0 00000168
+
+Symbol: ChangeDutyCycleTo0
+   Definitions
+      At line 296 in file main.s
+   Uses
+      At line 293 in file main.s
+Comment: ChangeDutyCycleTo0 used once
+ChangeStateToCurrentState 0000016C
+
+Symbol: ChangeStateToCurrentState
+   Definitions
+      At line 298 in file main.s
+   Uses
+      At line 284 in file main.s
+      At line 294 in file main.s
+
+CheckButtonState 0000014A
+
+Symbol: CheckButtonState
+   Definitions
+      At line 268 in file main.s
+   Uses
+      At line 127 in file main.s
+Comment: CheckButtonState used once
+ContinueOff 000000FC
+
+Symbol: ContinueOff
+   Definitions
+      At line 212 in file main.s
+   Uses
+      At line 196 in file main.s
+Comment: ContinueOff used once
+ContinueOn 000000B4
+
+Symbol: ContinueOn
+   Definitions
+      At line 181 in file main.s
+   Uses
+      At line 160 in file main.s
+Comment: ContinueOn used once
+Delay 00000106
+
+Symbol: Delay
+   Definitions
+      At line 219 in file main.s
+   Uses
+      At line 171 in file main.s
+      At line 181 in file main.s
+      At line 204 in file main.s
+      At line 212 in file main.s
+
+
+
+ARM Macro Assembler    Page 2 Alphabetic symbol ordering
+Relocatable symbols
+
+
+Done 00000100
+
+Symbol: Done
+   Definitions
+      At line 214 in file main.s
+   Uses
+      At line 184 in file main.s
+Comment: Done used once
+DutyCycleIs0 000000D6
+
+Symbol: DutyCycleIs0
+   Definitions
+      At line 198 in file main.s
+   Uses
+      At line 187 in file main.s
+Comment: DutyCycleIs0 used once
+DutyCycleIs100 00000096
+
+Symbol: DutyCycleIs100
+   Definitions
+      At line 167 in file main.s
+   Uses
+      At line 153 in file main.s
+Comment: DutyCycleIs100 used once
+LEDOff 000000BC
+
+Symbol: LEDOff
+   Definitions
+      At line 186 in file main.s
+   Uses
+      At line 143 in file main.s
+Comment: LEDOff used once
+LEDOn 00000080
+
+Symbol: LEDOn
+   Definitions
+      At line 147 in file main.s
+   Uses
+      None
+Comment: LEDOn unused
+LEDStateChanged 00000144
+
+Symbol: LEDStateChanged
+   Definitions
+      At line 258 in file main.s
+   Uses
+      None
+Comment: LEDStateChanged unused
+Start 00000000
+
+Symbol: Start
+   Definitions
+      At line 62 in file main.s
+   Uses
+      At line 59 in file main.s
+Comment: Start used once
+StateChecked 0000016E
+
+
+
+
+ARM Macro Assembler    Page 3 Alphabetic symbol ordering
+Relocatable symbols
+
+Symbol: StateChecked
+   Definitions
+      At line 299 in file main.s
+   Uses
+      At line 279 in file main.s
+Comment: StateChecked used once
+changeLEDState 00000112
+
+Symbol: changeLEDState
+   Definitions
+      At line 230 in file main.s
+   Uses
+      At line 148 in file main.s
+      At line 174 in file main.s
+      At line 192 in file main.s
+      At line 199 in file main.s
+      At line 207 in file main.s
+
+loop 00000068
+
+Symbol: loop
+   Definitions
+      At line 123 in file main.s
+   Uses
+      At line 129 in file main.s
+Comment: loop used once
+subtractAgain 00000108
+
+Symbol: subtractAgain
+   Definitions
+      At line 223 in file main.s
+   Uses
+      At line 224 in file main.s
+Comment: subtractAgain used once
+toggleLED 00000074
+
+Symbol: toggleLED
+   Definitions
+      At line 134 in file main.s
+   Uses
+      At line 125 in file main.s
+Comment: toggleLED used once
+19 symbols
+
+
+
+ARM Macro Assembler    Page 1 Alphabetic symbol ordering
+Absolute symbols
+
+GPIO_LOCK_KEY 4C4F434B
+
+Symbol: GPIO_LOCK_KEY
+   Definitions
+      At line 44 in file main.s
+   Uses
+      At line 79 in file main.s
+Comment: GPIO_LOCK_KEY used once
+GPIO_PORTE_AFSEL_R 40024420
+
+Symbol: GPIO_PORTE_AFSEL_R
+   Definitions
+      At line 34 in file main.s
+   Uses
+      None
+Comment: GPIO_PORTE_AFSEL_R unused
+GPIO_PORTE_DATA_R 400243FC
+
+Symbol: GPIO_PORTE_DATA_R
+   Definitions
+      At line 32 in file main.s
+   Uses
+      At line 233 in file main.s
+      At line 273 in file main.s
+
+GPIO_PORTE_DEN_R 4002451C
+
+Symbol: GPIO_PORTE_DEN_R
+   Definitions
+      At line 35 in file main.s
+   Uses
+      At line 98 in file main.s
+Comment: GPIO_PORTE_DEN_R used once
+GPIO_PORTE_DIR_R 40024400
+
+Symbol: GPIO_PORTE_DIR_R
+   Definitions
+      At line 33 in file main.s
+   Uses
+      At line 87 in file main.s
+Comment: GPIO_PORTE_DIR_R used once
+GPIO_PORTF_AFSEL_R 40025420
+
+Symbol: GPIO_PORTF_AFSEL_R
+   Definitions
+      At line 39 in file main.s
+   Uses
+      None
+Comment: GPIO_PORTF_AFSEL_R unused
+GPIO_PORTF_CR_R 40025524
+
+Symbol: GPIO_PORTF_CR_R
+   Definitions
+      At line 43 in file main.s
+   Uses
+      At line 82 in file main.s
+Comment: GPIO_PORTF_CR_R used once
+GPIO_PORTF_DATA_R 400253FC
+
+
+
+
+ARM Macro Assembler    Page 2 Alphabetic symbol ordering
+Absolute symbols
+
+Symbol: GPIO_PORTF_DATA_R
+   Definitions
+      At line 37 in file main.s
+   Uses
+      At line 242 in file main.s
+Comment: GPIO_PORTF_DATA_R used once
+GPIO_PORTF_DEN_R 4002551C
+
+Symbol: GPIO_PORTF_DEN_R
+   Definitions
+      At line 41 in file main.s
+   Uses
+      At line 103 in file main.s
+Comment: GPIO_PORTF_DEN_R used once
+GPIO_PORTF_DIR_R 40025400
+
+Symbol: GPIO_PORTF_DIR_R
+   Definitions
+      At line 38 in file main.s
+   Uses
+      At line 93 in file main.s
+Comment: GPIO_PORTF_DIR_R used once
+GPIO_PORTF_LOCK_R 40025520
+
+Symbol: GPIO_PORTF_LOCK_R
+   Definitions
+      At line 42 in file main.s
+   Uses
+      At line 78 in file main.s
+Comment: GPIO_PORTF_LOCK_R used once
+GPIO_PORTF_PUR_R 40025510
+
+Symbol: GPIO_PORTF_PUR_R
+   Definitions
+      At line 40 in file main.s
+   Uses
+      None
+Comment: GPIO_PORTF_PUR_R unused
+SYSCTL_RCGCGPIO_R 400FE608
+
+Symbol: SYSCTL_RCGCGPIO_R
+   Definitions
+      At line 45 in file main.s
+   Uses
+      At line 69 in file main.s
+Comment: SYSCTL_RCGCGPIO_R used once
+13 symbols
+
+
+
+ARM Macro Assembler    Page 1 Alphabetic symbol ordering
+External symbols
+
+TExaS_Init 00000000
+
+Symbol: TExaS_Init
+   Definitions
+      At line 55 in file main.s
+   Uses
+      At line 64 in file main.s
+Comment: TExaS_Init used once
+1 symbol
+372 symbols in table
