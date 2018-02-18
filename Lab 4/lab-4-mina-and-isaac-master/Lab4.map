@@ -7,6 +7,7 @@ Section Cross References
     startup.o(RESET) refers to startup.o(STACK) for StackMem
     startup.o(RESET) refers to texas.o(.text) for Timer4A_Handler
     startup.o(RESET) refers to main.o(.text) for Start
+    systick.o(.text) refers to texas.o(.text) for TExaS_Init
     main.o(.text) refers to texas.o(.text) for TExaS_Init
     texas.o(.text) refers to texas.o(.bss) for TExaS
     texas.o(.text) refers to texas.o(.constdata) for IntroMsg
@@ -19,10 +20,10 @@ Removing Unused input sections from the image.
 
     Removing startup.o(HEAP), (0 bytes).
     Removing startup.o(.text), (28 bytes).
-    Removing systick.o(.text), (4 bytes).
+    Removing systick.o(.text), (72 bytes).
     Removing main.o(DATA), (0 bytes).
 
-4 unused section(s) (total 32 bytes) removed from the image.
+4 unused section(s) (total 100 bytes) removed from the image.
 
 ==============================================================================
 

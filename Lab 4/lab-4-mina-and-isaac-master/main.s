@@ -54,9 +54,10 @@ SYSCTL_RCGCGPIO_R  EQU 0x400FE608
 ; ROM Area
        IMPORT  TExaS_Init
 ;-UUU-Import routine(s) from other assembly files (like SysTick.s) here
-       AREA    |.text|, CODE, READONLY, ALIGN=2
-       THUMB
-       EXPORT  Start
+		IMPORT SysTick_Init
+		AREA    |.text|, CODE, READONLY, ALIGN=2
+		THUMB
+		EXPORT  Start
 
 
 Start
@@ -248,12 +249,6 @@ changeLEDState ;Turns breadboard LED on or off depending on value of R0's least 
 	AND R3, #0x04 ;Preserve the least significant bit of R0.
 	ORR R2, R3 ;ORR the data with R0. If R0 = 0x01, ORR turns bit 0 of the data to a 1 (LED on). If R0 = 0x00, nothing changes.
 	STRB R2, [R1]
-	
-	;LSL R0, #2
-	;ORR R2, R0
-	;ORR R0, #0xFB
-	;AND R2, R0 ;Set PF4 LED
-	;STRB R2, [R1]
 	
 LEDStateChanged	POP {R0, R1, R2, R3, R4, LR}
 	BX LR
